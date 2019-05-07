@@ -17,7 +17,7 @@
  */
 definition(
     name: "Hub IP Notifier",
-    namespace: "smartthings",
+    namespace: "thebrent",
     author: "SmartThings",
     description: "Listen for local IP changes when your hub registers.",
     category: "SmartThings Internal",

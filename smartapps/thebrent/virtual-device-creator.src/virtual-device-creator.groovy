@@ -16,7 +16,7 @@
 
 definition(
         name: "Virtual Device Creator",
-        namespace: "smartthings",
+        namespace: "thebrent",
         author: "SmartThings",
         description: "Creates virtual devices",
         iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",

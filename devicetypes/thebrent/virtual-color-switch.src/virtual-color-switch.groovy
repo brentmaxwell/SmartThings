@@ -51,12 +51,22 @@ metadata {
 			}
 		}
 
+    standardTile("explicitOn", "device.switch", width: 2, height: 2, decoration: "flat") {
+      state "default", label: "On", action: "switch.on", icon: "st.Home.home30", backgroundColor: "#ffffff"
+    }
+    standardTile("explicitOff", "device.switch", width: 2, height: 2, decoration: "flat") {
+      state "default", label: "Off", action: "switch.off", icon: "st.Home.home30", backgroundColor: "#ffffff"
+    }
+    controlTile("levelSlider", "device.level", "slider", width: 2, height: 2, inactiveLabel: false, range: "(1..100)") {
+      state "physicalLevel", action: "switch level.setLevel"
+    }
+
     controlTile("colorTempSliderControl", "device.colorTemperature", "slider", width: 4, height: 2, inactiveLabel: false, range:"(2000..6500)") {
-        state "colorTemperature", action:"color temperature.setColorTemperature"
+      state "colorTemperature", action:"setColorTemperature"
     }
 
     valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        state "colorTemperature", label: 'WHITES'
+      state "colorTemperature", label: 'WHITES'
     }
 
 		standardTile("reset", "device.reset", height: 2, width: 2, inactiveLabel: false, decoration: "flat") {
@@ -64,11 +74,11 @@ metadata {
 		}
 
 		standardTile("refresh", "device.refresh", height: 2, width: 2, inactiveLabel: false, decoration: "flat") {
-			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
+			state "default", label:"", action:"refresh", icon:"st.secondary.refresh"
 		}
 
 		main(["rich-control"])
-		details(["rich-control", "colorTempSliderControl", "colorTemp", "reset", "refresh"])
+		details(["rich-control", "levelSlider", "colorTempSliderControl", "colorTemp", "reset", "refresh"])
 	}
 }
 
@@ -145,7 +155,7 @@ def setSaturation(percent) {
 def setHue(percent) {
     log.debug "Executing 'setHue'"
     if (verifyPercent(percent)) {
-	    log.trace parent.setHue(this, percent)
+	    sendEvent(name: "hue", value: percent, isStateChange: true)
     }
 }
 
@@ -175,7 +185,7 @@ def setColor(value) {
         validValues.switch = "on"
     }
     if (!validValues.isEmpty()) {
-	    log.trace parent.setColor(this, validValues)
+	    sendEvent(name: "color", value: validValues, isStateChange: true)
     }
 }
 

@@ -18,7 +18,7 @@
  */
 definition(
     name: "Hue Mood Lighting",
-    namespace: "smartthings",
+    namespace: "thebrent",
     author: "SmartThings",
     description: "Sets the colors and brightness level of your Philips Hue lights to match your mood.",
     category: "SmartThings Labs",

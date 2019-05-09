@@ -16,7 +16,7 @@
  
 definition(
     name: "NFC Tag Toggle",
-    namespace: "smartthings",
+    namespace: "thebrent",
     author: "SmartThings",
     description: "Allows toggling of a switch, lock, or garage door based on an NFC Tag touch event",
     category: "SmartThings Internal",

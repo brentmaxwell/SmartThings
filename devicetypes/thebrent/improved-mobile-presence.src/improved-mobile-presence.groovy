@@ -48,7 +48,7 @@ metadata {
       state "default", label: '${currentValue}'
     }
     main "location"
-    details(["presence", "battery", "charging"])
+    details(["presence", "location", "battery", "charging"])
   }
     
   preferences {

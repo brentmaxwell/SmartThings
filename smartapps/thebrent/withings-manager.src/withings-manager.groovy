@@ -32,8 +32,8 @@ definition(
 	usesThirdPartyAuthentication: true,
 	pausable: false
 ) {
-	appSetting "consumerKey"
-	appSetting "consumerSecret"
+	appSetting "clientId"
+	appSetting "clientSecret"
 }
 
 // ========================================================
@@ -44,64 +44,37 @@ preferences {
 	page(name: "authPage")
 }
 
+mappings {
+  path("/oauth/initialize") {action: [GET: "oauthInitUrl"]}
+  path("/oauth/callback") {action: [GET: "callback"]}
+}
+def baseApiUrl() { "https://wbsapi.withings.net/v2" }
+def userid() { state.userid }
+
 def authPage() {
-
-	def installOptions = false
-	def description = "Required (tap to set)"
-	def authState
-
-	if (oauth_token()) {
-		// TODO: Check if it's valid
-		if (true) {
-			description = "Saved (tap to change)"
-			installOptions = true
-			authState = "complete"
-		} else {
-			// Worth differentiating here? (no longer valid vs. non-existent state.externalAuthToken?)
-			description = "Required (tap to set)"
-		}
-	}
-
-
-	dynamicPage(name: "authPage", install: installOptions, uninstall: true) {
-		section {
-
-			if (installOptions) {
-				input(name: "withingsLabel", type: "text", title: "Add a name", description: null, required: true)
-			}
-
-			href url: shortUrl("authenticate"), style: "embedded", required: false, title: "Authenticate with Withings", description: description, state: authState
-		}
-	}
+  if(!state.accessToken) {
+    log.debug "Creating access token"
+    createAccessToken()
+  }
+   
+  def redirectUrl = "https://graph.api.smartthings.com/oauth/initialize?appId=${app.id}&access_token=${state.accessToken}&apiServerUrl=${getApiServerUrl()}"
+  log.debug redirectUrl
+  if(!state.authToken) {
+    log.debug "Loading authPage"
+    return dynamicPage(name: "authPage", title: "Login", nextPage: "", uninstall: false) {
+      section() {
+        paragraph "tap below to log in to the third-party service and authorize SmartThings access"
+        href url: redirectUrl, style: "embedded", required: true, title: "Authenticate with Withings", description: "Click to enter credentials"
+      }
+    }
+  } else {
+  }
+  remove("Remove")
 }
 
 // ========================================================
 // MAPPINGS
 // ========================================================
-
-mappings {
-	path("/authenticate") {
-		action:
-		[
-			GET: "authenticate"
-		]
-	}
-	path("/x") {
-		action:
-		[
-			GET: "exchangeTokenFromWithings"
-		]
-	}
-	path("/n") {
-		action:
-		[POST: "notificationReceived"]
-	}
-
-	path("/test/:action") {
-		action:
-		[GET: "test"]
-	}
-}
 
 def test() {
 	"${params.action}"()
@@ -119,7 +92,7 @@ def authenticate() {
 def exchangeTokenFromWithings() {
 	// Withings hits us here during the oAuth flow
 //	log.trace "exchangeTokenFromWithings ${params}"
-	atomicState.userid = params.userid // TODO: restructure this for multi-user access
+	state.userid = params.userid // TODO: restructure this for multi-user access
 	exchangeToken()
 }
 
@@ -132,7 +105,7 @@ def notificationReceived() {
 		enddate  : params.enddate,
 	]
 
-	def measures = wGetMeasures(notificationParams)
+	def measures = GetMeasures(notificationParams)
 	sendMeasureEvents(measures)
 	return [status: 0]
 }
@@ -158,6 +131,7 @@ def updated() {
 }
 
 def initialize() {
+  log.debug "Initialize"
 	if (!getChild()) { createChild() }
 	app.updateLabel(withingsLabel)
 	wCreateNotification()
@@ -175,40 +149,7 @@ private getChild() {
 
 private void createChild() {
 	def child = addChildDevice("thebrent", "Withings User", userid(), null, [name: app.label, label: withingsLabel])
-	atomicState.child = [dni: child.deviceNetworkId]
-}
-
-// ========================================================
-// URL HELPERS
-// ========================================================
-
-def stBaseUrl() {
-	if (!atomicState.serverUrl) {
-		stToken()
-		atomicState.serverUrl = buildActionUrl("").split(/api\//).first()
-	}
-	return atomicState.serverUrl
-}
-
-def stToken() {
-	atomicState.accessToken ?: createAccessToken()
-}
-
-def shortUrl(path = "", urlParams = [:]) {
-	attachParams("${stBaseUrl()}api/t/${stToken()}/s/${app.id}/${path}", urlParams)
-}
-
-def noTokenUrl(path = "", urlParams = [:]) {
-	attachParams("${stBaseUrl()}api/smartapps/installations/${app.id}/${path}", urlParams)
-}
-
-def attachParams(url, urlParams = [:]) {
-	[url, toQueryString(urlParams)].findAll().join("?")
-}
-
-String toQueryString(Map m = [:]) {
-//	log.trace "toQueryString. URLEncoder will be used on ${m}"
-	return m.collect { k, v -> "${k}=${URLEncoder.encode(v.toString())}" }.sort().join("&")
+	state.child = [dni: child.deviceNetworkId]
 }
 
 // ========================================================
@@ -229,47 +170,18 @@ def backfillMeasures() {
 }
 
 // this is body measures. // TODO: get activity and others too
-def wGetMeasures(measureParams = [:]) {
-	def baseUrl = "https://wbsapi.withings.net/measure"
+def getMeasures(measureParams = [:]) {
+	def baseUrl = "${baseApiUrl()}/measure"
 	def urlParams = [
-		action     : "getmeas",
-		userid     : userid(),
+    access_token: state.authToken,
+		category     : userid(),
 		startdate  : unixTime(new Date() - 5),
 		enddate    : unixTime(),
-		oauth_token: oauth_token()
 	] + measureParams
-	def measureData = fetchDataFromWithings(baseUrl, urlParams)
+	def measureData = get(baseUrl, urlParams)
 //	log.debug "measureData: ${measureData}"
 	measureData.body.measuregrps.collect { parseMeasureGroup(it) }.flatten()
 }
-/*
-[
-	body:[
-		measuregrps:[
-			[
-				category:1, // 1 for real measurements, 2 for user objectives.
-				grpid:310040317,
-				measures:[
-					[
-						unit:0, 	// Power of ten the "value" parameter should be multiplied to to get the real value. Eg : value = 20 and unit=-1 means the value really is 2.0
-						value:60, // Value for the measure in S.I units (kilogram, meters, etc.). Value should be multiplied by 10 to the power of "unit" (see below) to get the real value.
-						type:11   // 1 : Weight (kg), 4 : Height (meter), 5 : Fat Free Mass (kg), 6 : Fat Ratio (%), 8 : Fat Mass Weight (kg), 9 : Diastolic Blood Pressure (mmHg), 10 : Systolic Blood Pressure (mmHg), 11 : Heart Pulse (bpm), 54 : SP02(%)
-					],
-					[
-						unit:-3,
-						value:-1000,
-						type:18
-					]
-				],
-				date:1422750210,
-				attrib:2
-			]
-		],
-		updatetime:1422750227
-	],
-	status:0
-]
-*/
 
 def sendMeasureEvents(measures) {
 //	log.debug "measures: ${measures}"
@@ -362,7 +274,7 @@ def wCreateNotification() {
 		comment    : "hmm" // TODO: figure out what to do here. spaces seem to break the request
 	]
 
-	fetchDataFromWithings(baseUrl, urlParams)
+	get(baseUrl, urlParams)
 }
 
 def wRevokeAllNotifications() {
@@ -381,26 +293,10 @@ def wRevokeNotification(notificationParams = [:]) {
 		oauth_token: oauth_token()
 	] + notificationParams
 
-	fetchDataFromWithings(baseUrl, urlParams)
+	get(baseUrl, urlParams)
 }
 
 def wListNotifications() {
-
-	/*
-	{
-		body: {
-			profiles: [
-				{
-					appli: 1,
-					expires: 2147483647,
-					callbackurl: "https://graph.api.smartthings.com/api/t/72ab3e57-5839-4cca-9562-dcc818f83bc9/s/537757a0-c4c8-40ea-8cea-aa283915bbd9/n",
-					comment: "hmm"
-				}
-			]
-		},
-		status: 0
-	}*/
-
 	def baseUrl = wNotificationBaseUrl()
 	def urlParams = [
 		action     : "list",
@@ -409,35 +305,51 @@ def wListNotifications() {
 		oauth_token: oauth_token()
 	]
 
-	def notificationData = fetchDataFromWithings(baseUrl, urlParams)
+	def notificationData = get(baseUrl, urlParams)
 	notificationData.body.profiles
-}
-
-def defaultOauthParams() {
-	defaultParameterKeys().inject([:]) { keyMap, currentKey ->
-		keyMap[currentKey] = "${currentKey}"()
-		keyMap
-	}
 }
 
 // ========================================================
 // WITHINGS DATA FETCHING
 // ========================================================
 
-def fetchDataFromWithings(baseUrl, urlParams) {
-
-//	log.debug "fetchDataFromWithings(${baseUrl}, ${urlParams})"
-
-	def defaultParams = defaultOauthParams()
-	def paramStrings = buildOauthParams(urlParams + defaultParams)
-//	log.debug "paramStrings: $paramStrings"
-	def url = buildOauthUrl(baseUrl, paramStrings, oauth_token_secret())
+def get(url, params) {
+	log.debug "get(${url}, ${urlParams})"
+	def builtUrl = buildUrl(url, paramStrings)
 	def json
 //	log.debug "about to make request to ${url}"
-	httpGet(uri: url, headers: ["Content-Type": "application/json"]) { response ->
+  def currentAction = [url: builtUrl, params: params]
+	httpGet(uri: builtUrl, headers: ["Content-Type": "application/json"]) { response ->
 		json = new groovy.json.JsonSlurper().parse(response.data)
 	}
 	return json
+}
+
+private httpGetAndVerifyToken(url, params) {
+  log.debug "get(${url}, ${urlParams})"
+	def builtUrl = buildUrl(url, paramStrings)
+	def json
+//	log.debug "about to make request to ${url}"
+  def currentAction = [url: builtUrl, params: params]
+	httpGet(uri: builtUrl, headers: ["Content-Type": "application/json"]) { response ->
+    if(resp.status == 401 && resp.data.status.code == 14) {
+      log.debug "Storing the failed action to try later"
+      def action = "actionCurrentlyExecuting"
+      log.debug "Refreshing your auth_token!"
+      refreshAuthToken()
+      httpGet(uri: builtUrl, headers: ["Content-Type": "application/json"]) { response2 ->
+        json = new groovy.json.JsonSlurper().parse(response2.data);
+      }
+    }
+    else{
+		  json = new groovy.json.JsonSlurper().parse(response.data)
+    }
+	}
+	return json
+}
+
+def buildUrl(url, params) {
+  url + "?" + params.sort().join("&")
 }
 
 // ========================================================
@@ -448,238 +360,120 @@ def wLogEnabled() { false } // For troubleshooting Oauth flow
 
 void wLog(message = "") {
 	if (!wLogEnabled()) { return }
-	def wLogMessage = atomicState.wLogMessage
+	def wLogMessage = state.wLogMessage
 	if (wLogMessage.length()) {
 		wLogMessage += "\n|"
 	}
 	wLogMessage += message
-	atomicState.wLogMessage = wLogMessage
+	state.wLogMessage = wLogMessage
 }
 
 void wLogNew(seedMessage = "") {
 	if (!wLogEnabled()) { return }
-	def olMessage = atomicState.wLogMessage
+	def olMessage = state.wLogMessage
 	if (oldMessage) {
 		log.debug "purging old wLogMessage: ${olMessage}"
 	}
-	atomicState.wLogMessage = seedMessage
+	state.wLogMessage = seedMessage
 }
 
 String wLogMessage() {
 	if (!wLogEnabled()) { return }
-	def wLogMessage = atomicState.wLogMessage
-	atomicState.wLogMessage = ""
+	def wLogMessage = state.wLogMessage
+	state.wLogMessage = ""
 	wLogMessage
 }
 
-// ========================================================
-// WITHINGS OAUTH DESCRIPTION
-// >>>>>>	The user opens the authPage for this SmartApp
-// STEP 1 get a token to be used in the url the user taps
-// STEP 2 generate the url to be tapped by the user
-// >>>>>>	The user taps the url and logs in to Withings
-// STEP 3 generate a token to be used for accessing user data
-// STEP 4 access user data
-// ========================================================
 
 // ========================================================
-// WITHINGS OAUTH STEP 1: get an oAuth "request token"
+// WITHINGS OAUTH
 // ========================================================
+def oauthEndpoint() { "https://account.withings.com/oauth2" }
 
-def requestTokenUrl() {
-	wLogNew "WITHINGS OAUTH STEP 1: get an oAuth 'request token'"
+def oauthInitUrl() {
+  state.oauthInitState = UUID.randomUUID().toString()
 
-	def keys = defaultParameterKeys() + "oauth_callback"
-	def paramStrings = buildOauthParams(keys.sort())
+  def oauthParams = [
+    response_type: "code",
+    client_id: appSettings.clientId,
+    scope: "user.info,user.metrics,user.activity",
+    state: state.oauthInitState,
+    redirect_uri: "https://graph.api.smartthings.com/oauth/callback"
+  ]
 
-	buildOauthUrl("https://oauth.withings.com/account/request_token", paramStrings, "")
+  def url = "${oauthEndpoint()}/authorize?${toQueryString(oauthParams)}"
+  log.debug url
+  redirect(location: url)
 }
 
-// ========================================================
-// WITHINGS OAUTH STEP 2: End-user authorization
-// ========================================================
+def callback() {
+  log.debug "callback()>> params: $params, params.code ${params.code}"
 
-def userAuthorizationUrl() {
+  def code = params.code
+  def oauthState = params.state
 
-	// get url from Step 1
-	def tokenUrl = requestTokenUrl()
+  // Validate the response from the third party by making sure oauthState == state.oauthInitState as expected
+  if (oauthState == state.oauthInitState) {
+    def tokenParams = [
+      grant_type: "authorization_code",
+      client_id : appSettings.clientId,
+      client_secret: appSettings.clientSecret,
+      code      : code,
+      redirect_uri: "https://graph.api.smartthings.com/oauth/callback"
+    ]
 
-	// collect token from Withings
-	collectTokenFromWithings(tokenUrl)
+      // This URL will be defined by the third party in their API documentation
+    def tokenUrl = "${oauthEndpoint()}/token"
+    def tokenBody = toQueryString(tokenParams)
 
-	wLogNew "WITHINGS OAUTH STEP 2: End-user authorization"
+    httpPost(uri: tokenUrl, body: tokenBody) { resp ->
+      state.refreshToken = resp.data.refresh_token
+      state.authToken = resp.data.access_token
+    }
 
-	def keys = defaultParameterKeys() + "oauth_token"
-	def paramStrings = buildOauthParams(keys.sort())
+    if (state.authToken) {
+      success()
+    } else {
+      fail()
+    }
 
-	buildOauthUrl("https://oauth.withings.com/account/authorize", paramStrings, oauth_token_secret())
+  } else {
+    log.error "callback() failed. Validation of state did not match. oauthState != state.oauthInitState"
+  }
 }
 
-// ========================================================
-// WITHINGS OAUTH STEP 3: Generating access token
-// ========================================================
-
-def exchangeTokenUrl() {
-	wLogNew "WITHINGS OAUTH STEP 3: Generating access token"
-
-	def keys = defaultParameterKeys() + ["oauth_token", "userid"]
-	def paramStrings = buildOauthParams(keys.sort())
-
-	buildOauthUrl("https://oauth.withings.com/account/access_token", paramStrings, oauth_token_secret())
+// Example success method
+def success() {
+  renderAction("authorized")
 }
 
-def exchangeToken() {
-
-	def tokenUrl = exchangeTokenUrl()
-//	log.debug "about to hit ${tokenUrl}"
-
-	try {
-		// replace old token with a long-lived token
-		def token = collectTokenFromWithings(tokenUrl)
-//		log.debug "collected token from Withings: ${token}"
-		renderAction("authorized", "Withings Connection")
-	}
-	catch (Exception e) {
-		log.error e
-		renderAction("notAuthorized", "Withings Connection Failed")
-	}
+// Example fail method
+def fail() {
+  renderAction("notAuthorized")
 }
 
-// ========================================================
-// OAUTH 1.0
-// ========================================================
-
-def defaultParameterKeys() {
-	[
-		"oauth_consumer_key",
-		"oauth_nonce",
-		"oauth_signature_method",
-		"oauth_timestamp",
-		"oauth_version"
-	]
+private refreshAuthToken() {
+  def refreshParams = [
+      method: 'POST',
+      uri: oauthEndpoint(),
+      path: "/token",
+      query: [grant_type:'refresh_token', code:"${state.refreshToken}", client_id:"${appSettings.clientId}"],
+  ]
+    def jsonMap
+    httpPost(refreshParams) { resp ->
+      if(resp.status == 200) {
+        jsonMap = resp.data
+        if (resp.data) {
+          state.refreshToken = resp?.data?.refresh_token
+          state.accessToken = resp?.data?.access_token
+        }
+      }
+  }
 }
 
-def oauth_consumer_key() { consumerKey }
-
-def oauth_nonce() { nonce() }
-
-def nonce() { UUID.randomUUID().toString().replaceAll("-", "") }
-
-def oauth_signature_method() { "HMAC-SHA1" }
-
-def oauth_timestamp() { (int) (new Date().time / 1000) }
-
-def oauth_version() { 1.0 }
-
-def oauth_callback() { shortUrl("x") }
-
-def oauth_token() { atomicState.wToken?.oauth_token }
-
-def oauth_token_secret() { atomicState.wToken?.oauth_token_secret }
-
-def userid() { atomicState.userid }
-
-String hmac(String oAuthSignatureBaseString, String oAuthSecret) throws java.security.SignatureException {
-	if (!oAuthSecret.contains("&")) { log.warn "Withings requires \"&\" to be included no matter what" }
-	// get an hmac_sha1 key from the raw key bytes
-	def signingKey = new javax.crypto.spec.SecretKeySpec(oAuthSecret.getBytes(), "HmacSHA1")
-	// get an hmac_sha1 Mac instance and initialize with the signing key
-	def mac = javax.crypto.Mac.getInstance("HmacSHA1")
-	mac.init(signingKey)
-	// compute the hmac on input data bytes
-	byte[] rawHmac = mac.doFinal(oAuthSignatureBaseString.getBytes())
-	return org.apache.commons.codec.binary.Base64.encodeBase64String(rawHmac)
+private String toQueryString(Map m) {
+  return m.collect { k, v -> "${k}=${URLEncoder.encode(v.toString())}" }.sort().join("&")
 }
-
-Map parseResponseString(String responseString) {
-//	log.debug "parseResponseString: ${responseString}"
-	responseString.split("&").inject([:]) { c, it ->
-		def parts = it.split('=')
-		def k = parts[0]
-		def v = parts[1]
-		c[k] = v
-		return c
-	}
-}
-
-String applyParams(endpoint, oauthParams) { endpoint + "?" + oauthParams.sort().join("&") }
-
-String buildSignature(endpoint, oAuthParams, oAuthSecret) {
-	def oAuthSignatureBaseParts = ["GET", endpoint, oAuthParams.join("&")]
-	def oAuthSignatureBaseString = oAuthSignatureBaseParts.collect { URLEncoder.encode(it) }.join("&")
-	wLog "    ==> oAuth signature base string : \n${oAuthSignatureBaseString}"
-	wLog "    .. applying hmac-sha1 to base string, with secret : ${oAuthSecret} (notice the \"&\")"
-	wLog "    .. base64 encode then url-encode the hmac-sha1 hash"
-	String hmacResult = hmac(oAuthSignatureBaseString, oAuthSecret)
-	def signature = URLEncoder.encode(hmacResult)
-	wLog "    ==> oauth_signature = ${signature}"
-	return signature
-}
-
-List buildOauthParams(List parameterKeys) {
-	wLog "    .. adding oAuth parameters : "
-	def oauthParams = []
-	parameterKeys.each { key ->
-		def value = "${key}"()
-		wLog "        ${key} = ${value}"
-		oauthParams << "${key}=${URLEncoder.encode(value.toString())}"
-	}
-
-	wLog "    .. sorting all request parameters alphabetically "
-	oauthParams.sort()
-}
-
-List buildOauthParams(Map parameters) {
-	wLog "    .. adding oAuth parameters : "
-	def oauthParams = []
-	parameters.each { k, v ->
-		wLog "        ${k} = ${v}"
-		oauthParams << "${k}=${URLEncoder.encode(v.toString())}"
-	}
-
-	wLog "    .. sorting all request parameters alphabetically "
-	oauthParams.sort()
-}
-
-String buildOauthUrl(String endpoint, List parameterStrings, String oAuthTokenSecret) {
-	wLog "Api endpoint : ${endpoint}"
-
-	wLog "Signing request :"
-	def oAuthSecret = "${consumerSecret}&${oAuthTokenSecret}"
-	def signature = buildSignature(endpoint, parameterStrings, oAuthSecret)
-
-	parameterStrings << "oauth_signature=${signature}"
-
-	def finalUrl = applyParams(endpoint, parameterStrings)
-	wLog "Result: ${finalUrl}"
-	if (wLogEnabled()) {
-		log.debug wLogMessage()
-	}
-	return finalUrl
-}
-
-def collectTokenFromWithings(tokenUrl) {
-	// get token from Withings using the url generated in Step 1
-	def tokenString
-	httpGet(uri: tokenUrl) { resp -> // oauth_token=<token_key>&oauth_token_secret=<token_secret>
-		tokenString = resp.data.toString()
-//		log.debug "collectTokenFromWithings: ${tokenString}"
-	}
-	def token = parseResponseString(tokenString)
-	atomicState.wToken = token
-	return token
-}
-
-// ========================================================
-// APP SETTINGS
-// ========================================================
-
-def getConsumerKey() { appSettings.consumerKey }
-
-def getConsumerSecret() { appSettings.consumerSecret }
-
-// figure out how to put this in settings
-def getUserId() { atomicState.wToken?.userid }
 
 // ========================================================
 // HTML rendering

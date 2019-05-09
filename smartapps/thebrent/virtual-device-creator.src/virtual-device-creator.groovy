@@ -34,7 +34,7 @@ preferences {
 def mainPage() {
     dynamicPage(name: "mainPage") {
         section ("New Device") {
-            input "virtualDeviceType", "enum", title: "Which type of virtual device do you want to create?", multiple: false, required: true, options: ["Virtual Switch", "Virtual Dimmer Switch", "Virtual Color Switch"]
+            input "virtualDeviceType", "enum", title: "Which type of virtual device do you want to create?", multiple: false, required: true, options: ["Virtual Switch", "Virtual Dimmer Switch", "Virtual Color Dimmer Switch"]
             input "theHub", "hub", title: "Select the hub (required for local execution) (Optional)", multiple: false, required: false
         }
         section("Device Name") {

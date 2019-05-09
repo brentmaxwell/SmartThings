@@ -15,7 +15,7 @@
  */
 definition(
     name: "Presence Sensor",
-    namespace: "johndc7",
+    namespace: "thebrent",
     author: "John Callahan",
     description: "Improved Presence Sensor integration for SmartThings",
     category: "Convenience",

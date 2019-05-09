@@ -175,7 +175,7 @@ def updatePresence() {
             return [error:false,type:"Device updated",message:"Sucessfully updated device: ${body.id}"];
         }
     log.debug("Creating new device ${body.name} with an id of: ${body.id}");
-    addChildDevice("Improved Mobile Presence", body.id, null, [name: body.name ? body.name : "Presence Sensor"]);
+    addChildDevice("Advanced Mobile Presence", body.id, null, [name: body.name ? body.name : "Presence Sensor"]);
     return [error:false, type:"Device created", message:"Created new device ${body.name} with an id of: ${body.id}"];
     //return [error:true,type:"Invalid ID",message:"No device with an id of ${body.id} could be found. Requesting update of ${getChildDevices().size()} device(s) at location."];
 }

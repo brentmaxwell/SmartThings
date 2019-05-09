@@ -70,7 +70,7 @@ def updated() {
 def initialize() {
     def latestDni = state.nextDni
     if (virtualDeviceType) {
-        def d = addChildDevice("smartthings", virtualDeviceType, "virtual-$latestDni", theHub?.id, [completedSetup: true, label: deviceName])
+        def d = addChildDevice("thebrent", virtualDeviceType, "virtual-$latestDni", theHub?.id, [completedSetup: true, label: deviceName])
         latestDni++
         state.nextDni = latestDni
     } else {

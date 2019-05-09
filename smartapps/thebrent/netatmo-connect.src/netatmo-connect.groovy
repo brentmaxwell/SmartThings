@@ -18,7 +18,7 @@ definition(
   namespace: "thebrent",
   author: "brent@thebrent.net",
   description: "Netatmo Connect Integration",
-  category: "SmartThings Labs",
+  category: "My Apps",
   iconUrl: "https://s3.amazonaws.com/smartapp-icons/Partner/netamo-icon-1.png",
   iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Partner/netamo-icon-1%402x.png",
   oauth: true,

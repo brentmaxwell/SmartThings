@@ -35,7 +35,7 @@ metadata {
       state "present", labelIcon:"st.presence.tile.present", backgroundColor:"#00a0dc"
       state "not present", labelIcon:"st.presence.tile.not-present", backgroundColor:"#ffffff"
     }
-    valueTile("location", "device.currentLocation", width: 2, height: 2) {
+    valueTile("location", "device.currentLocation", width: 2, height: 1) {
       state "Home", label: '${currentValue}', backgroundColor:"#00a0dc"
       state "default", label: '${currentValue}', backgroundColor:"#ffffff"
 		}

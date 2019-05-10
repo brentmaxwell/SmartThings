@@ -39,6 +39,8 @@ metadata {
 	tiles {
 		// TODO: define your main and details tiles here
 	}
+    preferences {
+    }
 }
 
 // parse events into attributes
@@ -204,4 +206,9 @@ def enableWifiGuestNetwork() {
 def disableWifiGuestNetwork() {
 	log.debug "Executing 'disableWifiGuestNetwork'"
 	// TODO: handle 'disableWifiGuestNetwork' command
+}
+
+
+
+def updateDynamicDns() {
 }

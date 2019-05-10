@@ -1,7 +1,7 @@
 /**
- *  IP Address
+ *  ps_GetPublicIP
  *
- *  Copyright 2019 Brent Maxwell
+ *  Copyright 2014 patrick@patrickstuart.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -11,65 +11,102 @@
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
+ *
  */
+
+import org.apache.commons.io.IOUtils;
+
 metadata {
-	definition (name: "IP Address", namespace: "thebrent", author: "Brent Maxwell", cstHandler: true) {
-		capability "Execute"
-    capability "Polling"
+    definition (name: "IP Address and Dynamic DNS Updater", namespace: "thebrent", author: "brent@thebrent.net") {
+    capability "Refresh"
 
-    attribute "ipAddress", "String"
-    attribute "lastUpdated", "String"
-    
-    command "getIpAddress"
-	}
+    attribute "publicIpAddress", "string"
+    attribute "lastUpdated", "string"
+    attribute "status", "enum", ["loading", "idle"]
+    attribute "dynamicDnsResponse", "enum", ["good","nochg","nohost","badauth","notfqdn","badagent","911"]
+  }
 
-  simulator {
-		// TODO: define status and reply messages here
-	}
+	simulator {
+  }
 
-	tiles {
-    valueTile("ipAddress", "device.ipAddress", inactiveLabel: false, decoration: "flat", columns:2) {
-      state "default", label:'${currentValue}', unit:"Public IP"
+	tiles(scale: 2) {
+    valueTile("publicIpAddress", "device.publicIpAddress", decoration: "flat", width: 6, height: 2) {
+      state "default", label:'${currentValue}', unit:"Public IP Address"
     }
-    standardTile("updateIpAddress", "device.ipAddress", width: 4, height: 2, decoration: "flat") {
-      state "default", label: "${currentValue}", action: "getIpAddress", icon: "st.Home.home30", backgroundColor: "#ffffff"
+    valueTile("lastUpdated", "device.lastUpdated", decoration: "flat", width: 6, height: 2) {
+      state "default", label:'${currentValue}', unit:"Last Updated"
     }
-    main(["ipAddress"])
-    details(["updateIpAddress"])
+    standardTile("refresh", "device.status", decoration: "flat", width: 6, height: 2) {
+      state "idle", icon:"st.secondary.refresh", action:"refresh.refresh"
+      state "loading", icon: "st.motion.motion.active", action:"refresh.refresh"
+    }
+    standardTile("dynamicDnsStatus", "device.dynamicDnsResponse", decoration: "flat", width: 6, height: 2) {
+      state "good", label: "Good"
+      state "nochg", label: "Good"
+      state "default", label: "Problem!"
+    }
+
+    main "publicIpAddress"
+    details(["publicIpAddress", "lastUpdated", "dynamicDnsStatus", "refresh"])
 	}
+  preferences {
+    input name: "enableDynDns", type: "bool", title: "Enable", description: "Enable dynamic DNS"
+    input name: "hostname", type: "string", title: "Host Name", description: "The hostname to update"
+    input name: "username", type: "string", title: "Username"
+    input name: "password", type: "password", title: "Password"
+
+  }
 }
 
-def ipApiUrl() { "https://api.myip.com" }
-
-def poll() {
-	updateDevice()
-}
+def getIpServiceAddress() { "216.146.38.70" }
 
 // parse events into attributes
 def parse(String description) {
-	log.debug "Parsing '${description}'"
-	// TODO: handle 'data' attribute
-}
-
-// handle commands
-def execute() {
-	log.debug "Executing 'execute'"
-	// TODO: handle 'execute' command
-}
-
-def getIpAddress() {
-  def json;
-  httpGet(ipApiUrl()) { response ->
-    log.debug "Received ${response.data} from server."
-    json = new groovy.json.JsonSlurper().parse(response.data)
+  log.debug "Parsing response"
+	def map = stringToMap(description)
+  def bodyString = new String(map.body.decodeBase64())
+	def body = (new XmlSlurper().parseText(bodyString))
+  def publicIp = body.toString().replace("Current IP CheckCurrent IP Address: ","")
+  def lastUpdated = new Date().format("yyyy/MM/dd HH:mm:ss")
+  log.debug publicIp
+  if(state.enableDynDns) {
+    updateDns(publicIp);  
   }
-  log.debug "Ip Address is ${json.ip}"
-  return json.ip
+  sendEvent(name: 'publicIpAddress', value: publicIp)
+  sendEvent(name: 'lastUpdated', value: lastUpdated)
+  sendEvent(name: 'status', value: "idle")
 }
 
-def updateDevice() {
-  def ipAddress = getIpAddress();
-  def currentTimeStamp = new Date();
-  sendEvent(name: "ipAddress", value: location, isStateChange: true)
-  sendEvent(name: "lastUpdated", value: currentTimeStamp, isStateChange: true)
+def refresh() {
+  log.debug "Refreshing"
+  state.enableDynDns = enableDynDns
+  state.hostname = hostname
+  state.username = username
+  state.password = password
+  sendEvent(name: 'status', value: "loading")
+  getHubAction()
 }
+
+def getHubAction() {   
+  log.debug "Getting IP address"
+  def hubAction = new physicalgraph.device.HubAction(
+    method: "GET",
+    headers: [
+      "HOST": "${getIpServiceAddress()}:80"
+    ]
+  )
+  hubAction
+}
+
+def updateDns(ipAddress) {
+  log.debug "Updating Google Dynamic DNS"
+  def url = "https://${state.username}:${state.password}@domains.google.com/nic/update?hostname=${state.hostname}&myip=${ipAddress}"
+  httpGet(url, { response -> 
+    def result = response.data.getText();
+    log.debug result
+    def stringResult = result.split(" ")[0]
+    log.debug stringResult
+    sendEvent(name: 'dynamicDnsResponse', value: stringResult);
+  })
+}
+

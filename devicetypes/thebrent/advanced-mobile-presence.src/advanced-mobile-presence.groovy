@@ -15,7 +15,7 @@
  */
  
 metadata {
-	definition (name: "Advanced Mobile Presence", namespace: "thebrent", author: "John Callahan") {
+	definition (name: "Advanced Mobile Presence", namespace: "thebrent", author: "Brent Maxwell") {
 		capability "Presence Sensor"
     capability "Occupancy Sensor"
     capability "Sensor"
@@ -31,7 +31,7 @@ metadata {
   }
 
 	tiles {
-    standardTile("presence", "device.presence", width: 2, height: 2, canChangeBackground: true) {
+    standardTile("presence", "device.presence", width: 2, height: 2, canChangeIcon: true) {
       state "present", labelIcon:"st.presence.tile.present", backgroundColor:"#00a0dc"
       state "not present", labelIcon:"st.presence.tile.not-present", backgroundColor:"#ffffff"
     }

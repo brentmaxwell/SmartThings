@@ -88,15 +88,8 @@ def refresh() {
 
 def getHubAction() {
   log.debug "Getting IP address"
-
-  def method = "GET"
-  def host = "216.146.38.70"
-  def hosthex = convertIPtoHex(host)
-  def porthex = convertPortToHex(80)
-  device.deviceNetworkId = "$hosthex:$porthex" 
-  def headers = [:]
-  headers.put("HOST", "$host:80")
-  def path = "/"
+  def host = getIpServiceAddress()
+  device.deviceNetworkId = "${convertIPtoHex(host)}:${convertPortToHex(80)}" 
   def hubAction = new physicalgraph.device.HubAction(
     method: "GET",
     headers: [

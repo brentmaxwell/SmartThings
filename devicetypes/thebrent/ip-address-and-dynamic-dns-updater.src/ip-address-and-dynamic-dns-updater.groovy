@@ -107,3 +107,32 @@ def updateDns(ipAddress) {
     sendEvent(name: 'dynamicDnsResponse', value: stringResult);
   })
 }
+
+private String convertIPtoHex(ipAddress) {
+  String hex = ipAddress.tokenize( '.' ).collect { String.format( '%02x', it.toInteger() ) }.join()
+  log.debug "IP address entered is $ipAddress and the converted hex code is $hex"
+  return hex
+}
+
+private String convertPortToHex(port) {
+  String hexport = port.toString().format( '%04x', port.toInteger() )
+  log.debug hexport
+  return hexport
+}
+
+private Integer convertHexToInt(hex) {
+  Integer.parseInt(hex,16)
+}
+
+private String convertHexToIP(hex) {
+  log.debug("Convert hex to ip: $hex")
+  [convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
+}
+
+private getHostAddress() {
+  def parts = device.deviceNetworkId.split(":")
+  log.debug device.deviceNetworkId
+  def ip = convertHexToIP(parts[0])
+  def port = convertHexToInt(parts[1])
+  return ip + ":" + port
+}

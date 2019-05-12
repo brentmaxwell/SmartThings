@@ -15,8 +15,9 @@
  */
 
 metadata {
-    definition (name: "IP Address and Dynamic DNS Updater", namespace: "thebrent", author: "brent@thebrent.net") {
+    definition (name: "IP Address and Dynamic DNS Updater", namespace: "thebrent", author: "brent@thebrent.net", vid: "generic-sensor", ocfDeviceType: "oic.d.wirelessrouter") {
     capability "Refresh"
+    capability "Sensor"
 
     attribute "publicIpAddress", "string"
     attribute "lastUpdated", "string"
@@ -28,24 +29,26 @@ metadata {
   }
 
 	tiles(scale: 2) {
-    valueTile("publicIpAddress", "device.publicIpAddress", decoration: "flat", width: 6, height: 2) {
-      state "default", label:'${currentValue}', unit:"Public IP Address"
-    }
-    valueTile("lastUpdated", "device.lastUpdated", decoration: "flat", width: 6, height: 2) {
-      state "default", label:'${currentValue}', unit:"Last Updated"
-    }
+    multiAttributeTile(name:"main", type:"generic", width:6, height:2) {
+			tileAttribute("device.publicIpAddress", key: "PRIMARY_CONTROL") {
+        attributeState "publicIpAddress", label:'${currentValue}', icon:"st.secondary.smartapps-tile"
+      }
+      tileAttribute("device.lastUpdated", key: "SECONDARY_CONTROL") {
+        attributeState "default", label:'${currentValue}'
+      }
+		}
     standardTile("refresh", "device.status", decoration: "flat", width: 6, height: 2) {
       state "idle", icon:"st.secondary.refresh", action:"refresh.refresh"
       state "loading", icon: "st.motion.motion.active", action:"refresh.refresh"
     }
     standardTile("dynamicDnsStatus", "device.dynamicDnsResponse", decoration: "flat", width: 6, height: 2) {
-      state "good", label: "Good"
-      state "nochg", label: "Good"
-      state "default", label: "Problem!"
+      state "good", label: "Good", color: "st.colors.green"
+      state "nochg", label: "Good", color: "st.colors.green"
+      state "default", label: "Problem!", color: "st.colors.red"
     }
 
-    main "publicIpAddress"
-    details(["publicIpAddress", "lastUpdated", "dynamicDnsStatus", "refresh"])
+    main(["main"])
+    details(["main", "dynamicDnsStatus", "refresh"])
 	}
   preferences {
     input name: "enableDynDns", type: "bool", title: "Enable", description: "Enable dynamic DNS"

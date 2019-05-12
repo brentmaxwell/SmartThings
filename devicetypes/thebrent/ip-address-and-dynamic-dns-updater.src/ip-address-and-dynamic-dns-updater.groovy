@@ -58,6 +58,7 @@ metadata {
 
 def getIpServiceAddress() { "216.146.38.70" }
 
+
 // parse events into attributes
 def parse(String description) {
   log.debug "Parsing response"
@@ -85,14 +86,24 @@ def refresh() {
   getHubAction()
 }
 
-def getHubAction() {   
+def getHubAction() {
   log.debug "Getting IP address"
+
+  def method = "GET"
+  def host = "216.146.38.70"
+  def hosthex = convertIPtoHex(host)
+  def porthex = convertPortToHex(80)
+  device.deviceNetworkId = "$hosthex:$porthex" 
+  def headers = [:]
+  headers.put("HOST", "$host:80")
+  def path = "/"
   def hubAction = new physicalgraph.device.HubAction(
     method: "GET",
     headers: [
-      "HOST": "${getIpServiceAddress()}:80"
+      "HOST": "$host:80"
     ]
   )
+  log.debug hubAction
   hubAction
 }
 

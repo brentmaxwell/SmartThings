@@ -35,25 +35,29 @@ metadata {
   }
 
   tiles(scale: 2) {
-    multiAttributeTile(name:"main", type:"generic", width:6, height:2) {
-      tileAttribute("device.externalIpAddress", key: "PRIMARY_CONTROL") {
-        attributeState "default", label:'${currentValue}', icon:"st.secondary.smartapps-tile"
-      }
-      tileAttribute("device.lastUpdated", key: "SECONDARY_CONTROL") {
-        attributeState "default", label:'${currentValue}'
-      }
+    standardTile("ipAddress", "device.externalIpAddress", decoration: "flat", canChangeIcon: true, width:6, height:2) {
+      state "default", label:'${currentValue}', icon:"st.secondary.smartapps-tile"
     }
-    standardTile("refresh", "device.refreshStatus", decoration: "flat", width: 6, height: 2) {
-      state "idle", icon:"st.secondary.refresh", action:"refresh.refresh"
-      state "loading", icon: "st.motion.motion.active", action:"refresh.refresh"
+    standardTile("lastUpdated", "device.lastUpdated", decoration: "flat", width:6, height:2) {
+      state "default", label:'${currentValue}'
     }
-    standardTile("dynamicDnsStatus", "device.dynamicDnsResponse", decoration: "flat", width: 6, height: 2) {
-      state "good", label: "Good", color: "st.colors.green"
-      state "nochg", label: "Good", color: "st.colors.green"
-      state "default", label: "Problem!", color: "st.colors.red"
+    standardTile("refresh", "device.refreshStatus", decoration: "flat", width: 3, height: 2) {
+      state "idle", icon: "st.secondary.refresh", action: "refresh.refresh"
+      state "loading", icon: "st.motion.motion.active", action: "refresh.refresh"
+      state "error", icon: "st.secondary.refresh", action: "refresh.refresh",  backgroundColor: "#e86d13"
     }
-    main(["main"])
-    details(["main", "dynamicDnsStatus", "refresh"])
+    standardTile("dynamicDnsStatus", "device.dynamicDnsResponse", decoration: "flat", width: 3, height: 2) {
+      state "good", label: "Good", backgroundColor: "#44B621"
+      state "nochg", label: "Good", backgroundColor: "#44B621"
+      state "nohost", label: "Error", backgroundColor: "#e86d13"
+      state "badauth", label: "Authentication error", backgroundColor: "#e86d13"
+      state "notfqdn", label: "Error", backgroundColor: "#e86d13"
+      state "badagent", label: "Bad request", backgroundColor: "#e86d13"
+      state "abuse", label: "Blocked", backgroundColor: "#e86d13"
+      state "911", label: "Problem!", backgroundColor: "#e86d13"
+    }
+    main(["ipAddress"])
+    details(["ipAddress", "dynamicDnsStatus", "refresh"])
   }
   preferences {
     input name: "enableDynDns", type: "bool", title: "Enable", description: "Enable dynamic DNS"
@@ -74,6 +78,7 @@ def parse(String description) {
   def xml = msg.xml                // => any XML included in response body, as a document tree structure
   def data = msg.data              // => either JSON or XML in response body (whichever is specified by content-type header in response)
   if( body.contains("GetExternalIPAddressResponse")) {
+    log.trace "IP Address: ${data}"
     sendEvent(name: 'externalIpAddress', value: data)
     sendEvent(name: 'lastUpdated', value: new Date().format("yyyy/MM/dd HH:mm:ss"))
     updateDns(data)
@@ -82,6 +87,7 @@ def parse(String description) {
 }
 
 def getExternalIpAddress() {
+  log.trace "getExternalIpAddress"
   return doSoapAction("GetExternalIPAddress", "WANIPConnection:1", "/ctl/IPConn")
 }
 
@@ -95,12 +101,16 @@ def refresh() {
 }
 
 def updateDns(ipAddress) {
-  def url = "https://${state.username}:${state.password}@domains.google.com/nic/update?hostname=${state.hostname}&myip=${ipAddress}"
-  httpGet(url, { response -> 
-    def result = response.data.getText();
-    def stringResult = result.split(" ")[0]
-    sendEvent(name: 'dynamicDnsResponse', value: stringResult);
-  })
+  if(state.enableDynDns) {
+    log.trace "Update DNS: ${ipAddress}"
+    def url = "https://${state.username}:${state.password}@domains.google.com/nic/update?hostname=${state.hostname}&myip=${ipAddress}"
+    httpGet(url, { response -> 
+      def result = response.data.getText();
+      log.trace result
+      def stringResult = result.split(" ")[0]
+      sendEvent(name: 'dynamicDnsResponse', value: stringResult);
+    })
+  }
 }
 
 // handle commands

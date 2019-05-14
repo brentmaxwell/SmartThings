@@ -28,6 +28,9 @@ metadata {
     attribute "lastUpdated", "string"
     attribute "refreshStatus", "enum", ["loading", "idle"]
     attribute "dynamicDnsResponse", "enum", ["good","nochg","nohost","badauth","notfqdn","badagent","911"]
+
+    command "getExternalIpAddress"
+    command "updateDns", ["string"]
   }
 
   simulator {
@@ -57,7 +60,7 @@ metadata {
       state "911", label: "Problem!", backgroundColor: "#e86d13"
     }
     main(["ipAddress"])
-    details(["ipAddress", "dynamicDnsStatus", "refresh"])
+    details(["ipAddress", "lastUpdated" "dynamicDnsStatus", "refresh"])
   }
   preferences {
     input name: "enableDynDns", type: "bool", title: "Enable", description: "Enable dynamic DNS"

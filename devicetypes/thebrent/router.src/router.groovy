@@ -24,6 +24,7 @@ metadata {
     capability "Wifi Mesh Router"
     capability "Refresh"
 
+	attribute "physicalLinkStatus", "enum", ["Up", "Down", "Initializing", "Unavailable"]
     attribute "externalIpAddress", "string"
     attribute "lastUpdated", "string"
     attribute "refreshStatus", "enum", ["loading", "idle"]
@@ -38,18 +39,19 @@ metadata {
   }
 
   tiles(scale: 2) {
-    standardTile("ipAddress", "device.externalIpAddress", decoration: "flat", canChangeIcon: true, width:6, height:2) {
+    valueTile("ipAddress", "device.externalIpAddress", decoration: "flat", canChangeIcon: true, width:6, height:2) {
       state "default", label:'${currentValue}', icon:"st.secondary.smartapps-tile"
     }
-    standardTile("lastUpdated", "device.lastUpdated", decoration: "flat", width:6, height:2) {
+    valueTile("lastUpdated", "device.lastUpdated", decoration: "flat", width:6, height:2) {
       state "default", label:'${currentValue}'
     }
-    standardTile("refresh", "device.refreshStatus", decoration: "flat", width: 3, height: 2) {
-      state "idle", icon: "st.secondary.refresh", action: "refresh.refresh"
-      state "loading", icon: "st.motion.motion.active", action: "refresh.refresh"
-      state "error", icon: "st.secondary.refresh", action: "refresh.refresh",  backgroundColor: "#e86d13"
+    valueTile("physicalLinkStatus", "device.physicalLinkStatus", decoration: "flat", width: 3, height: 2) {
+      state "Up", label: '${currentValue}', backgroundColor: "#44B621"
+      state "Down", label: '${currentValue}', backgroundColor: "#e86d13"
+      state "Initializing", label: '${currentValue}', backgroundColor: "#ffff00"
+      state "Unavailable", label: '${currentValue}', backgroundColor: "#e86d13"
     }
-    standardTile("dynamicDnsStatus", "device.dynamicDnsResponse", decoration: "flat", width: 3, height: 2) {
+    valueTile("dynamicDnsStatus", "device.dynamicDnsResponse", decoration: "flat", width: 3, height: 2) {
       state "good", label: "Good", backgroundColor: "#44B621"
       state "nochg", label: "Good", backgroundColor: "#44B621"
       state "nohost", label: "Error", backgroundColor: "#e86d13"
@@ -58,9 +60,15 @@ metadata {
       state "badagent", label: "Bad request", backgroundColor: "#e86d13"
       state "abuse", label: "Blocked", backgroundColor: "#e86d13"
       state "911", label: "Problem!", backgroundColor: "#e86d13"
+      state "default", label: "-"
+    }
+    standardTile("refresh", "device.refreshStatus", decoration: "flat", width: 3, height: 2) {
+      state "idle", icon: "st.secondary.refresh", action: "refresh.refresh"
+      state "loading", icon: "st.motion.motion.active", action: "refresh.refresh"
+      state "error", icon: "st.secondary.refresh", action: "refresh.refresh",  backgroundColor: "#e86d13"
     }
     main(["ipAddress"])
-    details(["ipAddress", "lastUpdated", "dynamicDnsStatus", "refresh"])
+    details(["main","ipAddress", "lastUpdated", "physicalLinkStatus", "dynamicDnsStatus", "refresh"])
   }
   preferences {
     input name: "enableDynDns", type: "bool", title: "Enable", description: "Enable dynamic DNS"
@@ -80,12 +88,20 @@ def parse(String description) {
   def json = msg.json              // => any JSON included in response body, as a data structure of lists and maps
   def xml = msg.xml                // => any XML included in response body, as a document tree structure
   def data = msg.data              // => either JSON or XML in response body (whichever is specified by content-type header in response)
-  if( body.contains("GetExternalIPAddressResponse")) {
-    log.trace "IP Address: ${data}"
-    sendEvent(name: 'externalIpAddress', value: data)
-    sendEvent(name: 'lastUpdated', value: new Date().format("yyyy/MM/dd HH:mm:ss"))
-    updateDns(data)
+  if(xml != null) {
+    def externalIpAddress = xml.Body[0].GetExternalIPAddressResponse.NewExternalIPAddress
+    def physicalLinkStatus = xml.Body[0].GetCommonLinkPropertiesResponse.NewPhysicalLinkStatus
+    if(externalIpAddress != "") {
+      log.debug "getExternalIpAddressResponse: ${externalIpAddress}"
+      sendEvent(name: 'externalIpAddress', value: externalIpAddress)
+      updateDns(data)
+    }
+    if(physicalLinkStatus != "") {
+      log.debug "getCommonLinkPropertiesResponse: ${physicalLinkStatus}"
+      sendEvent(name: 'physicalLinkStatus', value: physicalLinkStatus)
+    }
   }
+  sendEvent(name: 'lastUpdated', value: new Date().format("yyyy/MM/dd HH:mm:ss"))
   sendEvent(name: 'refreshStatus', value: 'idle')
 }
 
@@ -94,13 +110,22 @@ def getExternalIpAddress() {
   return doSoapAction("GetExternalIPAddress", "WANIPConnection:1", "/ctl/IPConn")
 }
 
+def getCommonLinkProperties() {
+  log.trace "getCommonLinkProperties"
+  return doSoapAction("GetCommonLinkProperties", "WANCommonInterfaceConfig:1","/ctl/IPConn")
+}
+
 def refresh() {
   state.enableDynDns = enableDynDns
   state.hostname = hostname
   state.username = username
   state.password = password
   sendEvent(name: 'refreshStatus', value: "loading")
-  getExternalIpAddress()
+  def actions = [
+    getExternalIpAddress(),
+    getCommonLinkProperties(),
+  ]
+  return actions
 }
 
 def updateDns(ipAddress) {
@@ -147,7 +172,7 @@ def disableWifiGuestNetwork() {
   // TODO: handle 'disableWifiGuestNetwork' command
 }
 
-def sync(ip, port) {
+def sync(service, ip, port) {
   def existingIp = getDataValue("ip")
   def existingPort = getDataValue("port")
   if (ip && ip != existingIp) {
@@ -161,7 +186,7 @@ def sync(ip, port) {
 def doSoapAction(action, service, path, Map body = [InstanceID:0, Speed:1]) {
   def result = new physicalgraph.device.HubSoapAction(
     path:    path,
-    urn:     "urn:schemas-upnp-org:service:$service:1",
+    urn:     "urn:schemas-upnp-org:service:$service",
     action:  action,
     body:    body,
     headers: [Host:getHostAddress(), CONNECTION: "close"]

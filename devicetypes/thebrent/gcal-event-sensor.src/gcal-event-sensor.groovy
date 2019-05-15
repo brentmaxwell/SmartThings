@@ -28,7 +28,7 @@
  
 metadata {
 	// Automatically generated. Make future change here.
-	definition (name: "GCal Event Sensor", namespace: thebrent", author: "mnestor") {
+	definition (name: "GCal Event Sensor", namespace: "thebrent", author: "mnestor") {
 		capability "Contact Sensor"
 		capability "Sensor"
         capability "Refresh"

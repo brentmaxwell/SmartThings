@@ -12,6 +12,7 @@ metadata {
 	definition (name: "Pollen Virtual Sensor", namespace: "thebrent", author: "james@schlackman.org") {
 		capability "Sensor"
 		capability "Polling"
+                capability "Odor Sensor"
 
 		attribute "index", "number"
 		attribute "category", "string"
@@ -128,6 +129,7 @@ def poll() {
 					
 					// Pollen index
 					send(name: "index", value: period.Index)
+send(name:"odorLevel",value:period.Index)
 					
 					def catName = ""
 					def indexNum = period.Index.toFloat()

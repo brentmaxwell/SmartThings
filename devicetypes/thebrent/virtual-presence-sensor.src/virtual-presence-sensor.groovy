@@ -13,10 +13,11 @@
 *  for the specific language governing permissions and limitations under the License.
 */
 metadata {
-  definition (name: "Virtual Presence Sensor", namespace: "thebrent", author: "Brent Maxwell", ocfDeviceType: "x.com.st.d.mobile.presence") {
+  definition (name: "Virtual Presence Sensor", namespace: "thebrent", author: "Brent Maxwell", ocfDeviceType: "x.com.st.d.sensor.presence") {
     capability "Presence Sensor"
-	capability "Occupancy Sensor"
+    capability "Occupancy Sensor"
     capability "Sensor"
+    capability "Geolocation"
 
     command "setPresence", ["boolean"]
   }
@@ -26,7 +27,7 @@ metadata {
   }
 
   tiles(scale: 2) {
-    standardTile("presence", "device.presence", width: 2, height: 2, canChangeBackground: true) {
+    standardTile("presence", "device.presence", width: 6, height: 6, canChangeBackground: true) {
       state("present", labelIcon:"st.presence.tile.mobile-present", backgroundColor:"#00A0DC")
       state("not present", labelIcon:"st.presence.tile.mobile-not-present", backgroundColor:"#ffffff")
     }
@@ -36,17 +37,18 @@ metadata {
 }
 
 def parse(String description) {
-  log.debug "Parsing ${description}"
   def value = parseValue(description)
   switch(value) {
     case "not present":
       if (device.currentState("occupancy") != "unoccupied"){
         sendEvent(generateEvent("occupancy: 0"))
+        sendEvent(generateEvent("presence: 0"))
       }
       break
     case "occupied":
       if (device.currentState("presence") != "present"){
         sendEvent(generateEvent("presence: 1"))
+        sendEvent(generateEvent("occupancy: 1"))
       }
       break
   }
@@ -73,8 +75,6 @@ private generateEvent(String description) {
 		isStateChange: isStateChange,
 		displayed: displayed(description, isStateChange)
 	]
-	log.debug "GenerateEvent returned $results.descriptionText"
-
 	return results
 }
 
@@ -118,7 +118,8 @@ private getState(String value) {
 }
 
 def setPresence(boolean present) {
-  log.debug "setPresence(" + present + ")"
-  def state = present ? "present" : "not present"
-  sendEvent(isStateChange: true, name: "presence", value: state)
+  def presenceState = present ? "present" : "not present"
+  def occupancyState = present ? "occupied" : "unoccupied"
+  sendEvent(isStateChange: true, name: "presence", value: presenceState)
+  sendEvent(isStateChange: true, name: "occupancy", value: occupancyState) 
 }

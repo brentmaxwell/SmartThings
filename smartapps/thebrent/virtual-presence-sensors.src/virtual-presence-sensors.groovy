@@ -49,10 +49,10 @@ def mainPage() {
 //            input "theHub", "hub", title: "Select the hub (required for local execution) (Optional)", multiple: false, required: false
 //        }
         section("Device Name") {
-            input "deviceName", title: "Enter device name", defaultValue: defaultLabel(), required: true
+          input "deviceName", title: "Enter device name", required: true
         }
         section("Devices Created") {
-            paragraph "${getAllChildDevices().inject("") {result, i -> result + (i.label + "\n")} ?: ""}"
+          paragraph "${getAllChildDevices().inject("") {result, i -> result + (i.label + "\n")} ?: ""}"
         }
         section("Endpoint") {
           paragraph "${state.endpoint}"
@@ -61,13 +61,8 @@ def mainPage() {
     }
 }
 
-def defaultLabel() {
-    "Virtual Device ${deviceName}"
-}
-
 def installed() {
     log.debug "Installed with settings: ${settings}"
-    state.nextDni = 1
 }
 
 def uninstalled() {
@@ -77,7 +72,6 @@ def uninstalled() {
 }
 
 def updated() {
-    log.debug "Updated with settings: ${settings}"
     initialize()
 }
 
@@ -104,14 +98,11 @@ def listDevices() {
 }
 
 def updatePresence() {
-	log.debug request.JSON
 	def body = request.JSON
     def device = getChildDevice("virtualPresence-${body.name}")
-    log.debug device
     if(device != null){
     	device.setPresence(body.isPresent);
-        log.debug("Updating: ${body.name}");
-        return [error:false,type:"Device updated",message:"Sucessfully updated device: ${body.name}"];
+        return [error:false, type:"Device updated", message:"Sucessfully updated device: ${body.name}"];
     }
 }
 

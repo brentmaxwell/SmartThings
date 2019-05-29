@@ -100,19 +100,23 @@ def ssdpHandler(evt) {
 
 	def devices = getDevices()
     log.debug devices
-	String ssdpUSN = parsedEvent.ssdpUSN.toString()
-	if (devices."${ssdpUSN}") {
-		def d = devices."${ssdpUSN}"
+    String macAddress = parsedEvent.mac
+    log.debug ssdpUSN
+	if (devices."${macAddress}") {
+    	log.debug d
+        log.debug parsedEvent
+		def d = devices."${macAddress}"
 		if (d.networkAddress != parsedEvent.networkAddress || d.deviceAddress != parsedEvent.deviceAddress) {
 			d.networkAddress = parsedEvent.networkAddress
 			d.deviceAddress = parsedEvent.deviceAddress
+            log.debug "sync child"
 			def child = getChildDevice(parsedEvent.mac)
 			if (child) {
 				child.sync(parsedEvent.networkAddress, parsedEvent.deviceAddress)
 			}
 		}
 	} else {
-		devices << ["${ssdpUSN}": parsedEvent]
+		devices << ["${macAddress}": parsedEvent]
 	}
 }
 

@@ -357,6 +357,7 @@ def addDevice() {
                 d = addChildDevice(getNameSpace(), getDeviceName(), newDevice.dni, newDevice.hub, [label:"${deviceName}"])
                 def childDevice = getChildDevice(d.deviceNetworkId)
                 childDevice.sendEvent(name:"serialNumber", value:newDevice.serial_number)
+                childDevice.sendEvent(name: "apiKey", value:newDevice.api_key)
                 log.trace "Created ${d.displayName} with id $dni"
             } else {
                 log.trace "${d.displayName} with id $dni already exists"
@@ -728,6 +729,27 @@ def sendNotificationMessageToDevice(dni, data)
         sendHubCommand(new physicalgraph.device.HubAction([
             method: "POST",
             path: localApiSendNotificationPath,
+            body: data,
+            headers: [
+                HOST: "${localIp}:8080",
+                Authorization: "Basic ${"${localApiUser}:${apiKey}".bytes.encodeBase64()}",
+                "Content-type":"application/json",
+                "Accept":"application/json"
+            ]]))
+    }
+}
+
+def sendApiCallToDevice(dni, method, path, data)
+{
+	def device = resolveDNI2Device(dni);
+    def localIp = device?.ipv4_internal;
+    def apiKey = device?.api_key;
+    if (localIp && apiKey)
+    {
+        log.debug "send notification message to device ${localIp}:8080 ${data}"
+        sendHubCommand(new physicalgraph.device.HubAction([
+            method: method,
+            path: path,
             body: data,
             headers: [
                 HOST: "${localIp}:8080",

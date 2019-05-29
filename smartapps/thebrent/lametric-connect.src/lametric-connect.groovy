@@ -78,7 +78,7 @@ def initialize() {
 */
 
 def getDeviceName() {
-    return "LaMetric v2"
+    return "LaMetric"
 }
 
 /**

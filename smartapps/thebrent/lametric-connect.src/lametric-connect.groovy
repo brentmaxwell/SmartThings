@@ -78,7 +78,7 @@ def initialize() {
 */
 
 def getDeviceName() {
-    return "LaMetric"
+    return "LaMetric v2"
 }
 
 /**
@@ -227,6 +227,7 @@ private verifyDevices()
         getAllInfoFromDevice(localIp, apiKey);
     }
 }
+
 def appHandler(evt)
 {
     log.debug("application event handler ${evt.name}")
@@ -270,58 +271,73 @@ def appHandler(evt)
 def locationHandler(evt)
 {
     log.debug("network event handler ${evt.name}")
-    if (evt.name == "ssdpTerm")
-    {
+    if (evt.name == "ssdpTerm") {
         log.debug "ignore ssdp"
     } else {
-        def lanEvent = parseLanMessage(evt.description, true)
-        log.debug lanEvent.headers;
-        if (lanEvent.body)
-        {
-            log.trace "lan event ${lanEvent}";
-            def parsedJsonBody;
-            try {
-                parsedJsonBody = parseJson(lanEvent.body);
-            } catch (e)
-            {
-                log.debug ("not json responce ignore $e");
-            }
-            if (parsedJsonBody)
-            {
-                log.trace (parsedJsonBody)
-                log.debug("responce for device ${parsedJsonBody?.id}")
-                //put or post response
-                if (parsedJsonBody.success)
-                {
+      def lanEvent = parseLanMessage(evt.description, true)
+      log.debug lanEvent.headers;
+      if (lanEvent.body)
+      {
+          log.trace "lan event ${lanEvent}";
+          def parsedJsonBody;
+          try {
+              parsedJsonBody = parseJson(lanEvent.body);
+          } catch (e)
+          {
+              log.debug ("not json responce ignore $e");
+          }
+          if (parsedJsonBody)
+          {
+              log.trace (parsedJsonBody)
+              log.debug("responce for device ${parsedJsonBody?.id}")
+              //put or post response
+              if (parsedJsonBody.success)
+              {
 
-                } else {
-                    //poll response
-                    log.debug "poll responce"
-                    log.debug ("poll responce ${parsedJsonBody}")
-                    def deviceId = parsedJsonBody?.id;
-                    if (deviceId)
-                    {
-                        def devices = getDevices();
-                        def device = devices."${deviceId}";
+              } else {
+                  //poll response
+                  log.debug "poll responce"
+                  log.debug ("poll responce ${parsedJsonBody}")
+                  def deviceId = parsedJsonBody?.id;
+                  if (deviceId)
+                  {
+                      def devices = getDevices();
+                      def device = devices."${deviceId}";
 
-                        device.verified = true;
-                        device.dni = [device.serial_number, device.id].join('.')
-                        device.hub = evt?.hubId;
-                        device.volume = parsedJsonBody?.audio?.volume;
-                        log.debug "verified device ${deviceId}"
-                        def childDevice = getChildDevice(device.dni)
-                        //update device info
-                        if (childDevice)
-                        {
-                            log.debug("send event to ${childDevice}")
-                            childDevice.sendEvent(name:"currentIP",value:device?.ipv4_internal);
-                            childDevice.sendEvent(name:"volume",value:device?.volume);
-                            childDevice.setOnline();
-                        }
-                        log.trace device
-                    }
-                }
-            }
+                      device.verified = true;
+                      device.dni = [device.serial_number, device.id].join('.')
+                      device.hub = evt?.hubId;
+                      device.volume = parsedJsonBody?.audio?.volume;
+                      log.debug "verified device ${deviceId}"
+                      def childDevice = getChildDevice(device.dni)
+                      //update device info
+                      if (childDevice)
+                      {
+                          log.debug("send event to ${childDevice}");
+                          childDevice.sendEvent(name: "id", value: parsedJsonBody?.id);
+                          childDevice.sendEvent(name: "name", value: parsedJsonBody?.name);
+                          childDevice.sendEvent(name: "serialNumber", value: parsedJsonBody?.serial_number);
+                          childDevice.sendEvent(name: "currentIP", value: device?.ipv4_internal);
+                          childDevice.sendEvent(name: "volume", value: parsedJsonBody?.audio?.volume);
+                          childDevice.sendEvent(name: "lqi", value: parsedJsonBody?.wifi.strength);
+                          childDevice.sendEvent(name: "level", value: parsedJsonBody?.display?.brightness);
+                          if(parsedJsonBody?.bluetooth?.active && parsedJsonBody?.bluetooth?.discoverable && parsedJsonBody?.bluetooth?.pairable) {
+                            childDevice.sendEvent(name: "bluetoothState", value: "pairable")
+                          }
+                          else if(parsedJsonBody?.bluetooth?.active && parsedJsonBody?.bluetooth?.discoverable) {
+                            childDevice.sendEvent(name: "bluetoothState", value: "discoverable")
+                          }
+                          else if(parsedJsonBody?.bluetooth?.active) {
+                            childDevice.sendEvent(name: "bluetoothState", value: "active")
+                          }
+                          else {
+                            childDevice.sendEvent(name: "bluetoothState", value: "off")
+                          }
+                      }
+                      log.trace device
+                  }
+              }
+          }
         }
     }
 }
@@ -356,8 +372,11 @@ def addDevice() {
                 def deviceName = newDevice.name
                 d = addChildDevice(getNameSpace(), getDeviceName(), newDevice.dni, newDevice.hub, [label:"${deviceName}"])
                 def childDevice = getChildDevice(d.deviceNetworkId)
-                childDevice.sendEvent(name:"serialNumber", value:newDevice.serial_number)
                 childDevice.sendEvent(name: "apiKey", value:newDevice.api_key)
+                childDevice.sendEvent(name: "id", value: newDevice.id);
+                childDevice.sendEvent(name: "name", value: newDevice.name);
+                childDevice.sendEvent(name: "serialNumber", value: newDevice.serial_number);
+                childDevice.sendEvent(name: "currentIP", value: newDevice.ipv4_internal);
                 log.trace "Created ${d.displayName} with id $dni"
             } else {
                 log.trace "${d.displayName} with id $dni already exists"
@@ -741,23 +760,23 @@ def sendNotificationMessageToDevice(dni, data)
 
 def sendApiCallToDevice(dni, method, path, data)
 {
-	def device = resolveDNI2Device(dni);
-    def localIp = device?.ipv4_internal;
-    def apiKey = device?.api_key;
-    if (localIp && apiKey)
-    {
-        log.debug "send notification message to device ${localIp}:8080 ${data}"
-        sendHubCommand(new physicalgraph.device.HubAction([
-            method: method,
-            path: path,
-            body: data,
-            headers: [
-                HOST: "${localIp}:8080",
-                Authorization: "Basic ${"${localApiUser}:${apiKey}".bytes.encodeBase64()}",
-                "Content-type":"application/json",
-                "Accept":"application/json"
-            ]]))
-    }
+  def device = resolveDNI2Device(dni);
+  def localIp = device?.ipv4_internal;
+  def apiKey = device?.api_key;
+  if (localIp && apiKey) {
+    log.debug "send notification message to device ${localIp}:8080 ${data}"
+    sendHubCommand(new physicalgraph.device.HubAction([
+      method: method,
+      path: path,
+      body: data,
+      headers: [
+        HOST: "${localIp}:8080",
+        Authorization: "Basic ${"${localApiUser}:${apiKey}".bytes.encodeBase64()}",
+        "Content-type":"application/json",
+        "Accept":"application/json"
+      ]
+    ]))
+  }
 }
 
 def getAllInfoFromDevice(localIp, apiKey)
@@ -767,7 +786,7 @@ def getAllInfoFromDevice(localIp, apiKey)
     {
     	def hubCommand = new physicalgraph.device.HubAction([
             method: "GET",
-            path: localApiIndexPath+"?fields=info,wifi,volume,bluetooth,id,name,mode,model,serial_number,os_version",
+            path: localApiIndexPath+"?fields=id,name,serial_number,os_version,mode,model,audio,display,bluetooth,wifi",
             headers: [
                 HOST: "${localIp}:8080",
                 Authorization: "Basic ${"${localApiUser}:${apiKey}".bytes.encodeBase64()}"
@@ -791,6 +810,10 @@ def requestRefreshDeviceInfo (dni)
     //	def devices = getDevices();
     //    def concreteDevice = devices[dni];
     //    requestDeviceInfo(conreteDevice);
+    def device = resolveDNI2Device(dni);
+    def localIp = device?.ipv4_internal;
+    def apiKey = device?.api_key;
+    getAllInfoFromDevice(localIp, apiKey);
 }
 
 private poll(dni) {

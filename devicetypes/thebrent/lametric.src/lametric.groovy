@@ -22,12 +22,15 @@ metadata {
 		capability "Refresh"
         
         attribute "currentIP", "string"
+        attribute "apiKey", "string"
         attribute "serialNumber", "string"
         attribute "volume", "string"
+        attribute "bluetoothState", "enum", ["on", "off"]
         attribute "mode", "enum", ["offline","online"]
         
         command "setOffline"
         command "setOnline"
+        command "toggleBluetooth"
 	}
 
 	simulator {
@@ -53,12 +56,16 @@ metadata {
 			state "default", label:'${currentValue}', height: 1, width: 2, inactiveLabel: false
 		}
 
-       		standardTile("presence", "device.mode", width: 2, height: 2, canChangeBackground: true) {
-           		state "default", icon:"https://developer.lametric.com/assets/smart_things/time_100.png"
+        standardTile("presence", "device.mode", width: 2, height: 2, canChangeBackground: true) {
+       		state "default", icon:"https://developer.lametric.com/assets/smart_things/time_100.png"
 		}
+        
+        standardTile("bluetooth", "device.bluetoothState", width:2, height: 2) {
+        	state "off", action: "toggleBluetooth"
+        }
 
 		main (["presence"])
-		details(["rich-control","networkAddress"])
+		details(["rich-control","networkAddress", "bluetooth"])
 	}
 	}
 }
@@ -122,6 +129,13 @@ def refresh() {
     log.debug "${device?.currentValue("volume")}"
 //    poll()
 	
+}
+
+def toggleBluetooth() {
+	log.debug "Toggle Bluetooth"
+	def value = device.currentValue("bluetoothState") == "off" ? false : true
+	def result = parent.sendApiCallToDevice(device.deviceNetworkId, "PUT", '/api/v2/device/bluetooth', [ active: value ])
+    log.debug ("result ${result}");
 }
 
 /*def setLevel() {

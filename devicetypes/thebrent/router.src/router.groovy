@@ -23,6 +23,8 @@ metadata {
     capability "Signal Strength"
     capability "Wifi Mesh Router"
     capability "Refresh"
+    capability "Health Check"
+    capability "Switch"
 
 	attribute "physicalLinkStatus", "enum", ["Up", "Down", "Initializing", "Unavailable"]
     attribute "externalIpAddress", "string"
@@ -80,6 +82,7 @@ metadata {
 
 // parse events into attributes
 def parse(String description) {
+  log.debug "Parse message ${description}"
   def msg = parseLanMessage(description)
   def headersAsString = msg.header // => headers as a string
   def headerMap = msg.headers      // => headers as a Map

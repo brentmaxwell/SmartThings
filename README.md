@@ -1,2 +1,10 @@
 # SmartThings
-SmartThings integrations
+Custom device integrations for SmartThings
+
+## LaMetric Connect
+
+## Router Setup
+
+## Slack
+
+## Virtual Presence Sensor

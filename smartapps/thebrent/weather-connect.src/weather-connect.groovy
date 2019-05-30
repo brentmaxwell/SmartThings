@@ -25,6 +25,7 @@ definition(
 
 
 preferences {
+  page name: "mainPage"
 	section("Title") {
 		// TODO: put inputs here
 	}
@@ -48,3 +49,7 @@ def initialize() {
 }
 
 // TODO: implement event handlers
+
+
+
+def apiUrl() { "https://api.weather.gov/" }

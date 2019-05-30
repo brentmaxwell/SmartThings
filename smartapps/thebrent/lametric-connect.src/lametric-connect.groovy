@@ -63,7 +63,7 @@ def initialize() {
   }
 }
 
-def getDeviceName() { "LaMetric" }
+def getDeviceName() { "LaMetric v2" }
 def getNameSpace() { "thebrent" }
 
 def getDevices() {

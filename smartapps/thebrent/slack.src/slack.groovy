@@ -24,6 +24,7 @@ definition(
   iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
 {
   appSetting "token"
+  appSetting "botToken"
 }
 
 preferences {
@@ -223,7 +224,7 @@ def mainPage() {
 		}
 
 		section (title:"Select Channel"){
-			input "selectedChannels", "text", title: "Channel", required: true, multiple:true, submitOnChange:true
+			input "channel", "text", title: "Channel", required: true, multiple:true, submitOnChange:true
 		}
     section (title: "Configure message"){
       input "defaultMessage", "bool", title: "Use Default Text:\n\"$notificationMessage\"", required: false, defaultValue: true, submitOnChange:true
@@ -413,7 +414,7 @@ def takeAction(evt) {
 	if (messageToShow) {
     log.debug "text ${messageToShow}"
     def notification = [
-      token: appSettings.token,
+      token: appSettings.botToken,
       channel: channel,
       text: messageToShow,
     ];

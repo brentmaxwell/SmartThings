@@ -25,9 +25,22 @@ definition(
 
 
 preferences {
-	section("Title") {
-		// TODO: put inputs here
-	}
+  page(name: "auth", title: "Tile (Connect)", nextPage:"", content:"authPage", uninstall: true, install:true)
+  page(name: "deviceDiscovery", title:"Device Setup", content:"deviceDiscovery", refreshTimeout:5);
+}
+
+def authPage() {
+  return dynamicPage(name: "auth", title: "Login", nextPage: "deviceDiscovery", uninstall:uninstallAllowed) {
+    section(){
+      paragraph "Enter your email and password for Tile"
+      input "email", "text", title: "Email", required: true
+      input "password", "password", title: "Password", required: true
+    }
+  }
+}
+
+def deviceDiscovery() {
+
 }
 
 def installed() {
@@ -47,4 +60,12 @@ def initialize() {
 	// TODO: subscribe to attributes, devices, locations, etc.
 }
 
-// TODO: implement event handlers
+def apiUrl() { "https://production.tile-api.com/api/v1" }
+def apiApplicationId() { "ios-tile-production" }
+def apiAppVersion() { "2.31.0" }
+def apiAppLocale() { "en-US" }
+def clientId() { "f7d7d792-57f0-4bc4-a28d-2120744a5856" }
+
+def getDevices() {
+
+}

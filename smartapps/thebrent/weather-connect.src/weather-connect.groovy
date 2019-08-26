@@ -58,7 +58,7 @@ def initialize() {
       }
       childDevice.sendEvent(name: "latitude", value: location.lat)
       childDevice.sendEvent(name: "longitude", value: location.lng)
-      getWeatherData(childDevice)
+      getLocationData(childDevice)
     }
   runEvery30Minutes("poll")
 }
@@ -83,12 +83,14 @@ def refresh() {
   def children = getChildDevices()
   for(device in children){
     getCurrentObservations(device)
+    getAlerts(device)
+    device.sendEvent(name: 'lastUpdated', value: new Date().format("yyyy/MM/dd HH:mm:ss"))
   }
 }
 
 def weatherApiEndpoint() { "https://api.weather.gov" }
 
-def getWeatherData(childDevice) {
+def getLocationData(childDevice) {
   def lat = childDevice.currentState("latitude").value
   def lng = childDevice.currentState("longitude").value
   def params = [
@@ -111,13 +113,27 @@ def getWeatherData(childDevice) {
 def getCurrentObservations(childDevice){
   def zoneId = childDevice.currentState("zoneId").value
   def params = [
-    uri: "${weatherApiEndpoint()}/zones/forecast/${zoneId}/observations",
+    uri: "${weatherApiEndpoint()}/zones/forecast/${zoneId}/observations?limit=1",
     contentType: "application/geo+json"
   ]
   httpGet(params) { resp ->
-    def data = new JsonSlurper().parseText(bytesToString(resp.data)).features[0].properties
+  	def data = new JsonSlurper().parseText(bytesToString(resp.data)).features[0].properties
+    log.debug data
     childDevice.sendEvent(name: "humidity", value: data.relativeHumidity.value)
     childDevice.sendEvent(name: "temperature", value: cToPref(data.temperature.value), unit: getTemperatureScale())
+  }
+}
+
+def getAlerts(childDevice) {
+  def zoneId = childDevice.currentState("zoneId").value
+  def params = [
+    uri: "${weatherApiEndpoint()}/alerts/active/zone/${zoneId}",
+    contentType: "application/geo+json"
+  ]
+  httpGet(params) { resp ->
+    def data = new JsonSlurper().parseText(bytesToString(resp.data)).features;
+    log.debug data
+    childDevice.sendEvent(name: "data", value: data)
   }
 }
 

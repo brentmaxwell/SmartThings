@@ -23,10 +23,12 @@ metadata {
     //capability "Fine Dust Sensor"
     //capability "Ultraviolet Index"
     //capability "Very Fine Dust Sensor"
+    capability "Execute"
     capability "Geolocation"
     capability "Refresh"
     capability "Polling"
 
+	attribute "lastUpdated", "string"
     attribute "city", "string"
     attribute "state", "string"
     attribute "countyId", "string"
@@ -68,7 +70,10 @@ metadata {
         [value: 96, color: "#bc2323"]
       ])
     }
-    valueTile("lastupdate", "lastupdate", width: 4, height: 1, inactiveLabel: false) { 			
+    valueTile("alerts", "data", width: 6, height: 2, inactiveLabel: false) {
+      state "default", label:'${currentValue}'
+    }
+    valueTile("lastUpdated", "lastUpdated", width: 4, height: 2, inactiveLabel: false) { 			
       state "default", label:"Last updated: " + '${currentValue}' 		
     }
     standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
@@ -81,7 +86,7 @@ metadata {
       state "default", label: '${currentValue}'
     }
     main("main")
-    details(["main","lastupdate","refresh"])
+    details(["main","alerts","lastUpdated","refresh"])
   }
 }
 

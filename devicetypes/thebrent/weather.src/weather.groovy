@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  */
 metadata {
-  definition (name: "Weather", namespace: "thebrent", author: "Brent Maxwell", cstHandler: true) {
+  definition (name: "Weather", namespace: "thebrent", author: "Brent Maxwell", cstHandler: true, vid: "SmartThings-smartthings-Xiaomi_Temperature_Humidity_Sensor", ocfDeviceType: "oic.d.thermostat") {
     capability "Temperature Measurement"
     capability "Relative Humidity Measurement"
     capability "Atmospheric Pressure Measurement"
@@ -23,12 +23,14 @@ metadata {
     //capability "Fine Dust Sensor"
     //capability "Ultraviolet Index"
     //capability "Very Fine Dust Sensor"
-    capability "Execute"
     capability "Geolocation"
+    capability "Sensor"
+    capability "Health Check"
     capability "Refresh"
     capability "Polling"
 
 	attribute "lastUpdated", "string"
+    
     attribute "city", "string"
     attribute "state", "string"
     attribute "countyId", "string"
@@ -37,6 +39,10 @@ metadata {
     attribute "radarStationId", "string"
     attribute "gridPointX", "number"
     attribute "gridPointY", "number"
+    
+    attribute "temperatureUnits", "enum", ["F", "C"]
+    attribute "pressureUnits", "enum", ["mbar", "inHg"]
+    attribute "speedUnits", "enum", ["k/h", "mph", "kts"]
   }
 
   simulator {
@@ -58,7 +64,7 @@ metadata {
       tileAttribute ("humidity", key: "SECONDARY_CONTROL") {
         attributeState "humidity", label:'Humidity: ${currentValue}%'
       }
-    } 
+    }
     valueTile("temperature", "device.temperature") {
       state("temperature", label: '${currentValue}°', icon:"st.Weather.weather2", backgroundColors: [
         [value: 31, color: "#153591"],
@@ -70,23 +76,32 @@ metadata {
         [value: 96, color: "#bc2323"]
       ])
     }
-    valueTile("alerts", "data", width: 6, height: 2, inactiveLabel: false) {
+    
+    valueTile("humidity", "device.humidity", inactiveLabel: false) {
+        state "humidity", label:'${currentValue}%'
+    }
+    valueTile("pressure", "device.pressure", width: 3, height: 1, inactiveLabel: false) {
+        state "pressure", label:'${currentValue}'
+    }
+    valueTile("lastUpdated", "lastUpdated", width: 3, height: 1, inactiveLabel: false) {
       state "default", label:'${currentValue}'
     }
-    valueTile("lastUpdated", "lastUpdated", width: 4, height: 2, inactiveLabel: false) { 			
-      state "default", label:"Last updated: " + '${currentValue}' 		
+ 	standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
+      state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
     }
-    standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
- 			state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
- 		}
-    valueTile("latitude", "device.latitude", height: 1, width: 1) {
+    valueTile("alerts", "alerts", width: 6, height: 2, inactiveLabel: false) {
       state "default", label:'${currentValue}'
-    }
-    valueTile("longitude", "device.longitude", height:1, width: 1) {
-      state "default", label: '${currentValue}'
     }
     main("main")
-    details(["main","alerts","lastUpdated","refresh"])
+    details(
+      [
+        "main",
+        "pressure",
+        "refresh",
+        "lastUpdated",
+        "alerts"
+        ]
+      )
   }
 }
 
@@ -117,6 +132,7 @@ def poll() {
   log.debug "poll"
   parent.poll()
 }
+
 def refresh() {
   log.debug "refresh"
   parent.refresh();

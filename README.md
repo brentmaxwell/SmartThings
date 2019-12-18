@@ -18,10 +18,10 @@ Publishes device events to a Slack channel
 Creates virtual devices that can be used in lots of other ways (for example, a Virtual Color Dimmer Switch that is used to control multiple real color dimmer lights)
 * [SmartApp](https://github.com/brentmaxwell/SmartThings/tree/master/smartapps/thebrent/virtual-device-creator.src)
 * DeviceTypes
- * [Virtual Color Dimmer Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-color-dimmer-switch.src)
- * [Virtual Color Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-color-switch.src)
- * [Virtual Dimmer Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-dimmer-switch.src)
- * [Virtual Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-switch.src)
+  * [Virtual Color Dimmer Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-color-dimmer-switch.src)
+  * [Virtual Color Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-color-switch.src)
+  * [Virtual Dimmer Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-dimmer-switch.src)
+  * [Virtual Switch](https://github.com/brentmaxwell/SmartThings/tree/master/devicetypes/thebrent/virtual-switch.src)
 
 ## Virtual Presence Sensor
 Creates a virtual presence sensor that can be triggered via an api.

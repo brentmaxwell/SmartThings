@@ -13,7 +13,14 @@
  *  for the specific language governing permissions and limitations under the License.
  */
 metadata {
-  definition (name: "Weather", namespace: "thebrent", author: "Brent Maxwell", cstHandler: true, vid: "SmartThings-smartthings-Xiaomi_Temperature_Humidity_Sensor", ocfDeviceType: "oic.d.thermostat") {
+  definition (
+    name: "Weather",
+    namespace: "thebrent",
+    author: "Brent Maxwell <brent@thebrent.net>",
+    cstHandler: true,
+    vid: "SmartThings-smartthings-Xiaomi_Temperature_Humidity_Sensor",
+    ocfDeviceType: "oic.d.thermostat") {
+
     capability "Temperature Measurement"
     capability "Relative Humidity Measurement"
     capability "Atmospheric Pressure Measurement"
@@ -29,8 +36,8 @@ metadata {
     capability "Refresh"
     capability "Polling"
 
-	attribute "lastUpdated", "string"
-    
+    attribute "lastUpdated", "string"
+
     attribute "city", "string"
     attribute "state", "string"
     attribute "countyId", "string"
@@ -39,14 +46,10 @@ metadata {
     attribute "radarStationId", "string"
     attribute "gridPointX", "number"
     attribute "gridPointY", "number"
-    
+
     attribute "temperatureUnits", "enum", ["F", "C"]
     attribute "pressureUnits", "enum", ["mbar", "inHg"]
     attribute "speedUnits", "enum", ["k/h", "mph", "kts"]
-  }
-
-  simulator {
-    // TODO: define status and reply messages here
   }
 
   tiles(scale: 2) {
@@ -60,7 +63,8 @@ metadata {
           [value: 84, color: "#f1d801"],
           [value: 92, color: "#d04e00"],
           [value: 98, color: "#bc2323"]
-        ]}
+        ]
+      }
       tileAttribute ("humidity", key: "SECONDARY_CONTROL") {
         attributeState "humidity", label:'Humidity: ${currentValue}%'
       }
@@ -76,7 +80,7 @@ metadata {
         [value: 96, color: "#bc2323"]
       ])
     }
-    
+
     valueTile("humidity", "device.humidity", inactiveLabel: false) {
         state "humidity", label:'${currentValue}%'
     }
@@ -86,46 +90,26 @@ metadata {
     valueTile("lastUpdated", "lastUpdated", width: 3, height: 1, inactiveLabel: false) {
       state "default", label:'${currentValue}'
     }
- 	standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
+    standardTile("refresh", "device.refresh", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
       state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
     }
     valueTile("alerts", "alerts", width: 6, height: 2, inactiveLabel: false) {
       state "default", label:'${currentValue}'
     }
     main("main")
-    details(
-      [
-        "main",
-        "pressure",
-        "refresh",
-        "lastUpdated",
-        "alerts"
-        ]
-      )
+    details([
+      "main",
+      "pressure",
+      "refresh",
+      "lastUpdated",
+      "alerts"
+    ])
   }
 }
 
 // parse events into attributes
 def parse(String description) {
   log.debug "Parsing '${description}'"
-  // TODO: handle 'airQuality' attribute
-  // TODO: handle 'atmosphericPressure' attribute
-  // TODO: handle 'carbonDioxide' attribute
-  // TODO: handle 'dustLevel' attribute
-  // TODO: handle 'fineDustLevel' attribute
-  // TODO: handle 'fineDustLevel' attribute
-  // TODO: handle 'latitude' attribute
-  // TODO: handle 'longitude' attribute
-  // TODO: handle 'method' attribute
-  // TODO: handle 'accuracy' attribute
-  // TODO: handle 'altitudeAccuracy' attribute
-  // TODO: handle 'heading' attribute
-  // TODO: handle 'speed' attribute
-  // TODO: handle 'lastUpdateTime' attribute
-  // TODO: handle 'humidity' attribute
-  // TODO: handle 'temperature' attribute
-  // TODO: handle 'ultravioletIndex' attribute
-  // TODO: handle 'veryFineDustLevel' attributes
 }
 
 def poll() {

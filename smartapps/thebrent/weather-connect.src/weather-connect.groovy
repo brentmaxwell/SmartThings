@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
-definition(
+definition (
   name: "Weather (Connect)",
   namespace: "thebrent",
   author: "Brent Maxwell",
@@ -36,32 +36,32 @@ def geocodingUrl() { "https://maps.googleapis.com/maps/api/geocode/json" }
 def weatherApiEndpoint() { "https://api.weather.gov" }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
-	initialize()
+  log.debug "Installed with settings: ${settings}"
+  initialize()
 }
 
 def updated() {
-	log.debug "Updated with settings: ${settings}"
-	unsubscribe()
-	initialize()
+  log.debug "Updated with settings: ${settings}"
+  unsubscribe()
+  initialize()
 }
 
 def initialize() {
-	httpGet([
-      uri: "${geocodingUrl()}?address=${address}&key=${appSettings.apiKey}",
-    ]) { resp ->
-      def data = resp.data.results[0];
-      def location = data.geometry.location;
-      def deviceId = "weather-${data.place_id}"
-      def childDevice = getChildDevice(deviceId)
-      if(!childDevice){
-        childDevice = addChildDevice("thebrent", "Weather", deviceId, null, [label: "Weather: ${data.formatted_address}"])
-        childDevice.sendEvent(name: "latitude", value: location.lat)
-        childDevice.sendEvent(name: "longitude", value: location.lng)
-        setChildDeviceSettings(childDevice)
-      }
-      refresh()
+  httpGet([
+    uri: "${geocodingUrl()}?address=${address}&key=${appSettings.apiKey}",
+  ]) { resp ->
+    def data = resp.data.results[0];
+    def location = data.geometry.location;
+    def deviceId = "weather-${data.place_id}"
+    def childDevice = getChildDevice(deviceId)
+    if(!childDevice){
+      childDevice = addChildDevice("thebrent", "Weather", deviceId, null, [label: "Weather: ${data.formatted_address}"])
+      childDevice.sendEvent(name: "latitude", value: location.lat)
+      childDevice.sendEvent(name: "longitude", value: location.lng)
+      setChildDeviceSettings(childDevice)
     }
+    refresh()
+  }
   runEvery30Minutes("poll")
 }
 
@@ -72,15 +72,14 @@ def mainPage() {
     }
     section("Preferences") {
       input "temperatureUnits", "enum", title: "Temperature Unit", description: "Please select temperature units", required: true, options: ["F", "C"]
-      input "pressureUnits", "enum", title: "Pressure Units", description: "Please select pressure units", required: true, options: ["mbar", "inHg"]      
+      input "pressureUnits", "enum", title: "Pressure Units", description: "Please select pressure units", required: true, options: ["mbar", "inHg"]
       input "speedUnits", "enum", title: "Wind Units", description: "Please select wind units", required: true, options: ["k/h", "mph", "kts"]
     }
     section("Devices Created") {
       paragraph "${getAllChildDevices().inject("") {result, i -> result + (i.label + "\n")} ?: ""}"
     }
     remove("Remove (Includes Devices)", "This will remove all virtual devices created through this app.")
-    }
-    
+  }
 }
 
 def poll() {
@@ -96,13 +95,11 @@ def refresh() {
   }
 }
 
-
-
 def setChildDeviceSettings(childDevice) {
-      childDevice.sendEvent(name: "temperatureUnits", value: settings.temperatureUnits)
-      childDevice.sendEvent(name: "pressureUnits", value: settings.pressureUnits)
-      childDevice.sendEvent(name: "speedUnits", value: settings.speedUnits)
-      getLocationData(childDevice)
+  childDevice.sendEvent(name: "temperatureUnits", value: settings.temperatureUnits)
+  childDevice.sendEvent(name: "pressureUnits", value: settings.pressureUnits)
+  childDevice.sendEvent(name: "speedUnits", value: settings.speedUnits)
+  getLocationData(childDevice)
 }
 
 def getLocationData(childDevice) {
@@ -132,7 +129,7 @@ def getCurrentObservations(childDevice){
     contentType: "application/geo+json"
   ]
   httpGet(params) { resp ->
-  	def data = new JsonSlurper().parseText(bytesToString(resp.data)).features[0].properties
+    def data = new JsonSlurper().parseText(bytesToString(resp.data)).features[0].properties
     setHumidity(childDevice, data.relativeHumidity)
     setTemperature(childDevice, data.temperature)
     setPressure(childDevice, data.barometricPressure)
@@ -140,26 +137,29 @@ def getCurrentObservations(childDevice){
     setWindGust(childDevice, data.windGust)
     setWindDirection(childDevice, data.windDirection)
     childDevice.sendEvent(name: "lastUpdated", value: data.timestamp, unit: "")
-    
   }
 }
 
 def setHumidity(childDevice, data) {
-	childDevice.sendEvent(name: "humidity", value: data.value.toDouble().trunc(2), unit: "%")
+  childDevice.sendEvent(name: "humidity", value: data.value.toDouble().trunc(2), unit: "%")
 }
 
 def setTemperature(childDevice, data) {
   def value = data.value
   def unit = childDevice.currentState("temperatureUnits").value
-	switch(unit) {
-      case "C":
+  switch(unit) {
+    case "C":
+      if(data.unitCode == "unit:degC") {
         value = value
-        break;
-      case "F":
+      }
+      break;
+    case "F":
+      if(data.unitCode == "unit:degC") {
         value = (value * (9/5)) + 32
-        break;
-    }
-    childDevice.sendEvent(name: "temperature", value: value.toDouble().trunc(2), unit: unit)
+      }
+      break;
+  }
+  childDevice.sendEvent(name: "temperature", value: value.toDouble().trunc(2), unit: unit)
 }
 
 def setPressure(childDevice, data) {
@@ -209,7 +209,7 @@ def setWindSpeed(childDevice, data) {
 def setWindGust(childDevice, data) {
 if(data.value != null) {
   def value = data.value
-    def unit = childDevice.currentState("speedUnits").value
+  def unit = childDevice.currentState("speedUnits").value
   switch(settings.speedUnits) {
     case "mph":
       unit = "mph"
@@ -227,15 +227,15 @@ if(data.value != null) {
         value = value * 1.944
       }
       break;
-   }
-   childDevice.sendEvent(name: "windGust", value: value.toDouble().trunc(2), unit: unit)
-}
+    }
+    childDevice.sendEvent(name: "windGust", value: value.toDouble().trunc(2), unit: unit)
+  }
 }
 
 def setWindDirection(childDevice, data) {
   def angle = data.value
   def name = ""
-  if(angle < 23) { 
+  if(angle < 23) {
     name = angle + "° North"
   } else if (angle < 68) {
     name = angle + "° NorthEast"
@@ -267,7 +267,7 @@ def getAlerts(childDevice) {
     def data = new JsonSlurper().parseText(bytesToString(resp.data)).features;
     def alerts = ""
     for(i in data) {
-    	alerts += i.properties.event + "\n"
+      alerts += i.properties.event + "\n"
     }
     childDevice.sendEvent(name: "alerts", value: alerts)
   }

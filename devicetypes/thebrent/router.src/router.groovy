@@ -15,18 +15,14 @@
 metadata {
   definition (name: "Router", namespace: "thebrent", author: "Brent Maxwell", cstHandler: true) {
     capability "Sensor"
-    capability "Execute"
-    capability "Geolocation"
     capability "Network Meter"
-    capability "Notification"
-    capability "Remote Control Status"
     capability "Signal Strength"
     capability "Wifi Mesh Router"
     capability "Refresh"
     capability "Health Check"
     capability "Switch"
 
-	attribute "physicalLinkStatus", "enum", ["Up", "Down", "Initializing", "Unavailable"]
+    attribute "physicalLinkStatus", "enum", ["Up", "Down", "Initializing", "Unavailable"]
     attribute "externalIpAddress", "string"
     attribute "lastUpdated", "string"
     attribute "refreshStatus", "enum", ["loading", "idle"]
@@ -34,10 +30,6 @@ metadata {
 
     command "getExternalIpAddress"
     command "updateDns", ["string"]
-  }
-
-  simulator {
-    // TODO: define status and reply messages here
   }
 
   tiles(scale: 2) {
@@ -135,24 +127,13 @@ def updateDns(ipAddress) {
   if(state.enableDynDns) {
     log.trace "Update DNS: ${ipAddress}"
     def url = "https://${state.username}:${state.password}@domains.google.com/nic/update?hostname=${state.hostname}&myip=${ipAddress}"
-    httpGet(url, { response -> 
+    httpGet(url, { response ->
       def result = response.data.getText();
       log.trace result
       def stringResult = result.split(" ")[0]
       sendEvent(name: 'dynamicDnsResponse', value: stringResult);
     })
   }
-}
-
-// handle commands
-def execute() {
-  log.debug "Executing 'execute'"
-  // TODO: handle 'execute' command
-}
-
-def deviceNotification() {
-  log.debug "Executing 'deviceNotification'"
-  // TODO: handle 'deviceNotification' command
 }
 
 def enableWifiNetwork() {
@@ -198,28 +179,25 @@ def doSoapAction(action, service, path, Map body = [InstanceID:0, Speed:1]) {
 }
 
 def subscribeToExternalIpChanges() {
-    subscribeToAction("/evt/IPConn/ExternalIPAddress")
+  subscribeToAction("/evt/IPConn/ExternalIPAddress")
 }
 
 private subscribeToAction(path, callbackPath="") {
-    log.trace "subscribe($path, $callbackPath)"
-    def address = getCallBackAddress()
-    def ip = getHostAddress()
-
-    def result = new physicalgraph.device.HubAction(
-        method: "SUBSCRIBE",
-        path: path,
-        headers: [
-            HOST: ip,
-            CALLBACK: "<http://${address}/notify$callbackPath>",
-            NT: "upnp:event",
-            TIMEOUT: "Second-28800"
-        ]
-    )
-
-    log.trace "SUBSCRIBE $path"
-
-    return result
+  log.trace "subscribe($path, $callbackPath)"
+  def address = getCallBackAddress()
+  def ip = getHostAddress()
+  def result = new physicalgraph.device.HubAction(
+    method: "SUBSCRIBE",
+    path: path,
+    headers: [
+      HOST: ip,
+      CALLBACK: "<http://${address}/notify$callbackPath>",
+      NT: "upnp:event",
+      TIMEOUT: "Second-28800"
+    ]
+  )
+  log.trace "SUBSCRIBE $path"
+  return result
 }
 
 // gets the address of the Hub

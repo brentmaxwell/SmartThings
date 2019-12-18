@@ -12,7 +12,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
- 
+
 definition(
   name: "LaMetric (Connect)",
   namespace: "thebrent",
@@ -63,7 +63,7 @@ def initialize() {
   }
 }
 
-def getDeviceName() { "LaMetric v2" }
+def getDeviceName() { "LaMetric Time" }
 def getNameSpace() { "thebrent" }
 
 def getDevices() {
@@ -458,8 +458,8 @@ private refreshAuthToken() {
       uri   : apiEndpoint,
       path  : apiTokenPath,
       body : [
-        grant_type: 'refresh_token', 
-        refresh_token: "${state.refreshToken}", 
+        grant_type: 'refresh_token',
+        refresh_token: "${state.refreshToken}",
         client_id : smartThingsClientId,
         client_secret: smartThingsClientSecret,
         redirect_uri: callbackUrl
@@ -675,5 +675,3 @@ def connectionStatus(message, redirectUrl = null) {
   """
   render contentType: 'text/html', data: html
 }
-
-

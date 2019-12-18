@@ -13,7 +13,7 @@ private getShardUrl()         { return getApiServerUrl() }
 private getCallbackUrl()      { "${serverUrl}/oauth/callback" }
 private getBuildRedirectUrl() { "${serverUrl}/oauth/initialize?appId=${app.id}&access_token=${state.accessToken}&apiServerUrl=${shardUrl}" }
 
-definition(
+definition (
   name: "Netatmo (Connect)",
   namespace: "thebrent",
   author: "brent@thebrent.net",
@@ -41,20 +41,20 @@ mappings {
 
 def authPage() {
   log.debug "In authPage"
-  
+
   def description
   def uninstallAllowed = false
   def oauthTokenProvided = false
-  
+
   if (!state.accessToken) {
     log.debug "About to create access token."
     state.accessToken = createAccessToken()
   }
-  
+
   if (canInstallLabs()) {
     def redirectUrl = getBuildRedirectUrl()
     // log.debug "Redirect url = ${redirectUrl}"
-  
+
     if (state.authToken) {
       description = "Tap 'Next' to proceed"
       uninstallAllowed = true
@@ -62,7 +62,7 @@ def authPage() {
     } else {
       description = "Click to enter Credentials."
     }
-  
+
     if (!oauthTokenProvided) {
       log.debug "Showing the login page"
       return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
@@ -75,7 +75,7 @@ def authPage() {
       log.debug "Showing the devices page"
       return dynamicPage(name: "Credentials", title: "Connected", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
         section() {
-          input(name:"Devices", style:"embedded", required:false, title:"Netatmo is now connected to SmartThings!", description:description) 
+          input(name:"Devices", style:"embedded", required:false, title:"Netatmo is now connected to SmartThings!", description:description)
         }
       }
     }
@@ -119,12 +119,12 @@ def callback() {
 
   if (oauthState == state.oauthInitState) {
     def tokenParams = [
-	  client_secret: getClientSecret(),
-	  client_id : getClientId(),
-	  grant_type: "authorization_code",
-	  redirect_uri: getCallbackUrl(),
-	  code: code,
-	  scope: "read_station"
+      client_secret: getClientSecret(),
+      client_id : getClientId(),
+      grant_type: "authorization_code",
+      redirect_uri: getCallbackUrl(),
+      code: code,
+      scope: "read_station"
     ]
 
     // log.debug "TOKEN URL: ${getVendorTokenPath() + toQueryString(tokenParams)}"
@@ -148,14 +148,14 @@ def callback() {
         // log.debug "swapped token: $resp.data"
       }
     }
-  
+
       // Handle success and failure here, and render stuff accordingly
     if (state.authToken) {
       success()
     } else {
       fail()
     }
-  
+
   } else {
     log.error "callback() failed oauthState != state.oauthInitState"
   }
@@ -186,7 +186,7 @@ def connectionStatus(message, redirectUrl = null) {
       <meta http-equiv="refresh" content="3; url=${redirectUrl}" />
     """
   }
-  
+
   def html = """
     <!DOCTYPE html>
     <html>
@@ -385,7 +385,7 @@ def getDeviceList() {
         state.deviceState[key] = value.dashboard_data
       }
 
-      value.modules.each { value2 ->            
+      value.modules.each { value2 ->
         def key2 = value2._id
         if (value2.module_name != null) {
           deviceList[key2] = "${value.station_name}: ${value2.module_name}"
@@ -394,22 +394,22 @@ def getDeviceList() {
         } else {
           switch(value2.type) {
             case "NAModule1":
-              moduleName = "Outdoor ${value.station_name}" 
+              moduleName = "Outdoor ${value.station_name}"
               break
             case "NAModule2":
-              moduleName = "Wind ${value.station_name}" 
+              moduleName = "Wind ${value.station_name}"
               break
             case "NAModule3":
-              moduleName = "Rain ${value.station_name}" 
+              moduleName = "Rain ${value.station_name}"
               break
             case "NAModule4":
-              moduleName = "Additional ${value.station_name}" 
+              moduleName = "Additional ${value.station_name}"
               break
           }
-        
+
           deviceList[key2] = "${value.station_name}: ${moduleName}"
           state.deviceDetail[key2] = value2 << ["module_name" : moduleName]
-          state.deviceState[key2] = value2.dashboard_data                        
+          state.deviceState[key2] = value2.dashboard_data
         }
       }
     }
@@ -454,7 +454,7 @@ def listDevices() {
 
     section("Preferences") {
       input "rainUnits", "enum", title: "Rain Units", description: "Please select rain units", required: true, options: [mm:'Millimeters', in:'Inches']
-      input "pressUnits", "enum", title: "Pressure Units", description: "Please select pressure units", required: true, options: [mbar:'mbar', inhg:'inhg']      
+      input "pressUnits", "enum", title: "Pressure Units", description: "Please select pressure units", required: true, options: [mbar:'mbar', inhg:'inhg']
       input "windUnits", "enum", title: "Wind Units", description: "Please select wind units", required: true, options: [kph:'kph', ms:'ms', mph:'mph', kts:'kts']
       input "time", "enum", title: "Time Format", description: "Please select time format", required: true, options: [12:'12 Hour', 24:'24 Hour']
       input "sound", "number", title: "Sound Sensor: \nEnter the value when sound will be marked as detected", description: "Please enter number", required: false
@@ -501,7 +501,7 @@ def poll() {
   def children = getChildDevices()
   //log.debug "State: ${state.deviceState}"
   //log.debug "Time Zone: ${location.timeZone}"
-   
+
 
   settings.devices.each { deviceId ->
     def detail = state?.deviceDetail[deviceId]
@@ -515,7 +515,7 @@ def poll() {
         child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
         child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm")
         child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
-        child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")        
+        child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")
         child?.sendEvent(name: 'pressure', value: (pressToPref(data['Pressure'])).toDouble().trunc(2), unit: settings.pressUnits)
         child?.sendEvent(name: 'soundPressureLevel', value: data['Noise'], unit: "db")
         child?.sendEvent(name: 'sound', value: noiseTosound(data['Noise']))
@@ -549,14 +549,14 @@ def poll() {
         child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
         child?.sendEvent(name: 'rainUnits', value: rainToPrefUnits(data['Rain']), displayed: false)
         child?.sendEvent(name: 'rainSumHourUnits', value: rainToPrefUnits(data['sum_rain_1']), displayed: false)
-        child?.sendEvent(name: 'rainSumDayUnits', value: rainToPrefUnits(data['sum_rain_24']), displayed: false)        
+        child?.sendEvent(name: 'rainSumDayUnits', value: rainToPrefUnits(data['sum_rain_24']), displayed: false)
         break;
       case 'NAModule4':
         log.debug "Updating Additional Module $data"
         child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
         child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm")
         child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
-        child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")        
+        child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")
         child?.sendEvent(name: 'min_temp', value: cToPref(data['min_temp']) as float, unit: getTemperatureScale())
         child?.sendEvent(name: 'max_temp', value: cToPref(data['max_temp']) as float, unit: getTemperatureScale())
         child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
@@ -579,7 +579,7 @@ def poll() {
         child?.sendEvent(name: 'GustDirection', value: gustTotext(data['GustAngle']))
         child?.sendEvent(name: 'WindStrengthUnits', value: windToPrefUnits(data['WindStrength']), displayed: false)
         child?.sendEvent(name: 'GustStrengthUnits', value: windToPrefUnits(data['GustStrength']), displayed: false)
-        child?.sendEvent(name: 'max_wind_strUnits', value: windToPrefUnits(data['max_wind_str']), displayed: false)         
+        child?.sendEvent(name: 'max_wind_strUnits', value: windToPrefUnits(data['max_wind_str']), displayed: false)
         break;
     }
   }
@@ -642,10 +642,10 @@ def windToPrefUnits(Wind) {
 }
 def lastUpdated(time) {
   if(location.timeZone == null) {
-  log.warn "Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!"  
+  log.warn "Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!"
     def updtTime = new Date(time*1000L).format("HH:mm")
     state.lastUpdated = updtTime
-  return updtTime + " UTC"   
+  return updtTime + " UTC"
   } else if(settings.time == '24') {
     def updtTime = new Date(time*1000L).format("HH:mm", location.timeZone)
     state.lastUpdated = updtTime
@@ -658,7 +658,7 @@ def lastUpdated(time) {
 }
 
 def windTotext(WindAngle) {
-  if(WindAngle < 23) { 
+  if(WindAngle < 23) {
     return WindAngle + "° North"
   } else if (WindAngle < 68) {
     return WindAngle + "° NorthEast"
@@ -680,7 +680,7 @@ def windTotext(WindAngle) {
 }
 
 def gustTotext(GustAngle) {
-  if(GustAngle < 23) { 
+  if(GustAngle < 23) {
     return GustAngle + "° North"
   } else if (GustAngle < 68) {
     return GustAngle + "° NEast"
@@ -702,7 +702,7 @@ def gustTotext(GustAngle) {
 }
 
 def noiseTosound(Noise) {
-  if(Noise > settings.sound) { 
+  if(Noise > settings.sound) {
     return "detected"
   } else {
     return "not detected"
@@ -713,8 +713,8 @@ def checkloc() {
 
   if(location.timeZone == null)
     sendPush("Netatmo: Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!")
-}    
-    
+}
+
 
 def debugEvent(message, displayEvent) {
 

@@ -1,5 +1,5 @@
 /**
- *  LaMetric v2
+ *  LaMetric
  *
  *  Copyright 2019 Brent Maxwell
  *
@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  */
 metadata {
-  definition (name: "LaMetric v2", namespace: "thebrent", author: "Brent Maxwell", cstHandler: true) {
+  definition (name: "LaMetric Time", namespace: "thebrent", author: "Brent Maxwell", cstHandler: true) {
     //capability "Alarm"
     capability "Audio Mute"
     capability "Audio Volume"
@@ -41,11 +41,6 @@ metadata {
     command "bluetoothOff"
   }
 
-
-  simulator {
-    // TODO: define status and reply messages here
-  }
-
   tiles(scale: 2) {
     controlTile("volume", "device.volume", "slider", height: 2, width: 2) {
       state "default", action:"audio volume.setVolume"
@@ -57,30 +52,30 @@ metadata {
     controlTile("brightness", "device.level", "slider", height: 2, width: 2) {
       state "default", action:"switch level.setLevel"
     }
-    
+
     standardTile("refresh", "device.refreshStatus", decoration: "flat", width: 2, height: 2) {
       state "idle", icon: "st.secondary.refresh", action: "refresh.refresh"
       state "loading", icon: "st.motion.motion.active", action: "refresh.refresh"
       state "error", icon: "st.secondary.refresh", action: "refresh.refresh",  backgroundColor: "#e86d13"
     }
     standardTile("bluetooth", "device.bluetoothState", width:2, height: 2) {
-     	state "off", label: '${currentValue}', action: "bluetoothOn"
+       state "off", label: '${currentValue}', action: "bluetoothOn"
       state "active", label: '${currentValue}', action: "bluetoothOff"
       state "discoverable", label: '${currentValue}', action: "bluetoothOff"
       state "pairable", label: '${currentValue}', action: "bluetoothOff"
     }
     // valueTile("serialNumber", "device.serialNumber", decoration: "flat", height: 1, width: 2, inactiveLabel: false) {
-		// 	state "default", label:'SN: ${currentValue}'
-		// }
-		valueTile("networkAddress", "device.currentIP", decoration: "flat", height: 1, width: 2, inactiveLabel: false) {
-			state "default", label:'${currentValue}', height: 1, width: 2, inactiveLabel: false
-		}
+    //   state "default", label:'SN: ${currentValue}'
+    // }
+    valueTile("networkAddress", "device.currentIP", decoration: "flat", height: 1, width: 2, inactiveLabel: false) {
+      state "default", label:'${currentValue}', height: 1, width: 2, inactiveLabel: false
+    }
     valueTile("signalStrength", "device.lqi", width:1, height:1) {
       state "default", label: '${currentValue}'
     }
-		main ([])
-		details(["volume", "mute", "brightness", "bluetooth", "refresh", "serialNumber","networkAddress", "signalStrength"])
-	}
+    main ([])
+    details(["volume", "mute", "brightness", "bluetooth", "refresh", "serialNumber","networkAddress", "signalStrength"])
+  }
   preferences {
     input name: "defaultNotificationSound", type: "enum", title: "Default Notification Sound", description: "Default Notification Sound", options: ["car", "bicycle", "cash", "cat", "dog", "dog2", "energy", "knock-knock", "letter_email", "lose1", "lose2", "negative1", "negative2", "negative3", "negative4", "negative5", "notification", "notification2", "notification3", "notification4", "open_door", "positive1", "positive2", "positive3", "positive4", "positive5", "positive6", "statistic", "thunder", "water1", "water2", "win", "win2", "wind", "wind_short", "alarm1", "alarm2","alarm3", "alarm4", "alarm5", "alarm6", "alarm7", "alarm8", "alarm9", "alarm10", "alarm11", "alarm12", "alarm13"]
     input name: "defaultNotificationIcon", type: "enum", title: "Default Notification Icon", description: "Default Notification Icon", options: ["none", "info", "alert"]
@@ -141,7 +136,7 @@ def setMute(value) {
   else {
     mute()
   }
-  log.trace ("result ${result}"); 
+  log.trace ("result ${result}");
 }
 
 def mute() {
@@ -158,7 +153,7 @@ def unmute() {
   log.debug previousVolume
   def result = setVolume(previousVolume)
   sendEvent(name: "mute", value: "unmuted")
-  return result 
+  return result
 }
 
 // Audio Volume

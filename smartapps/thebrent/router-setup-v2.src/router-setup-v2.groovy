@@ -14,7 +14,7 @@
  *
  */
 definition (
-  name: "Router Setup",
+  name: "Router Setup v2",
   namespace: "thebrent",
   author: "brent@thebrent.net",
   description: "Connect a router to your smartthings",
@@ -28,21 +28,22 @@ preferences {
   page(name: "deviceDiscovery", title: "UPnP Device Setup", content: "deviceDiscovery")
 }
 
-def searchTarget() { "urn:schemas-upnp-org:device:InternetGatewayDevice:1" }
+def upnpInternetGatewayDeviceTarget() { "urn:schemas-upnp-org:device:InternetGatewayDevice:1" }
+def upnpManageableDeviceTarget() { "urn:schemas-upnp-org:device:ManageableDevice:2" }
+def upnpWFADeviceTarget() { "urn:schemas-wifialliance-org:device:WFADevice:1" }
 
 def deviceDiscovery() {
   def options = [:]
   def devices = getVerifiedDevices()
-  log.debug "devices: ${devices}"
   devices.each {
     def value = it.value.name ?: "UPnP Device ${it.value.ssdpUSN.split(':')[1][-3..-1]}"
     def key = it.value.mac
     options["${key}"] = value
   }
-  ssdpSubscribe()
-  ssdpDiscover()
+  ssdpDiscoverInternetGatewayDevice()
+  ssdpDiscoverManageableDevice()
+  ssdpDiscoverWFADevice()
   verifyDevices()
-  log.debug "options ${options}"
   return dynamicPage(
       name: "deviceDiscovery",
         title: "Discovery Started!",
@@ -70,20 +71,39 @@ def updated() {
 def initialize() {
   unsubscribe()
   unschedule()
-  ssdpSubscribe()
+  ssdpSubscribeInternetGatewayDevice()
+  ssdpSubscribeManageableDevice()
+  ssdpSubscribeWFADevice()
   if (selectedDevices) {
     addDevices()
   }
   runEvery5Minutes("ssdpDiscover")
 }
 
-void ssdpSubscribe() {
-  subscribe(location, "ssdpTerm.${searchTarget()}", ssdpHandler)
+void ssdpDiscoverInternetGatewayDevice() {
+	sendHubCommand(new physicalgraph.device.HubAction("lan discovery ${upnpInternetGatewayDeviceTarget()}", physicalgraph.device.Protocol.LAN))
 }
 
-void ssdpDiscover() {
-  sendHubCommand(new physicalgraph.device.HubAction("lan discovery ${searchTarget()}", physicalgraph.device.Protocol.LAN))
+void ssdpDiscoverManageableDevice() {
+	sendHubCommand(new physicalgraph.device.HubAction("lan discovery ${upnpManageableDeviceTarget()}", physicalgraph.device.Protocol.LAN))
 }
+
+void ssdpDiscoverWFADevice() {
+  sendHubCommand(new physicalgraph.device.HubAction("lan discovery ${upnpWFADeviceTarget()}", physicalgraph.device.Protocol.LAN))
+}
+
+void ssdpSubscribeInternetGatewayDevice() {
+	subscribe(location, "ssdpTerm.${upnpInternetGatewayDeviceTarget()}", ssdpHandler)
+}
+
+void ssdpSubscribeManageableDevice() {
+	subscribe(location, "ssdpTerm.${upnpManageableDeviceTarget()}", ssdpHandler)
+}
+
+void ssdpSubscribeWFADevice() {
+	subscribe(location, "ssdpTerm.${upnpWFADeviceTarget()}", ssdpHandler)
+}
+
 
 def ssdpHandler(evt) {
   log.debug "ssdpHandler"
@@ -91,23 +111,33 @@ def ssdpHandler(evt) {
   def hub = evt?.hubId
   def parsedEvent = parseLanMessage(description)
   parsedEvent << ["hub":hub]
-  log.debug "parsedEvent: ${parsedEvent.ssdpUSN}"
+  log.debug(parsedEvent)
   def devices = getDevices()
+  log.debug devices
   String macAddress = parsedEvent.mac
-  String ssdpUSN = parsedEvent.ssdpUSN.replace("::urn:schemas-upnp-org:device:InternetGatewayDevice:1","")
-  if (devices."${ssdpUSN}") {
-    def d = devices."${ssdpUSN}"
-    if (d.networkAddress != parsedEvent.networkAddress || d.deviceAddress != parsedEvent.deviceAddress) {
+  log.debug ssdpUSN
+  if (devices."${macAddress}") {
+    log.debug d
+    log.debug parsedEvent
+    def d = devices."${macAddress}"
+    if (d.networkAddress != parsedEvent.networkAddress) {
       d.networkAddress = parsedEvent.networkAddress
-      d.deviceAddress = parsedEvent.deviceAddress
-      log.debug "sync child"
-      def child = getChildDevice(parsedEvent.mac)
-      if (child) {
-        child.sync(parsedEvent.networkAddress, parsedEvent.deviceAddress)
-      }
+    }
+    if(d.igdPort != parsedEvent.deviceAddress) {
+      d.igdPort = parsedEvent.deviceAddress
+    }
+    if(d.mgdPort != parsedEvent.deviceAddress) {
+      d.mgdPort = parsedEvent.deviceAddress
+    }
+    if(d.wfaPort != parsedEvent.deviceAddress) {
+      d.wfaPort = parsedEvent.deviceAddress
+    }
+    def child = getChildDevice(parsedEvent.mac)
+    if (child) {
+      child.sync(parsedEvent.networkAddress, parsedEvent.deviceAddress)
     }
   } else {
-    devices << ["${ssdpUSN}": parsedEvent]
+    devices << ["${macAddress}": parsedEvent]
   }
 }
 
@@ -126,10 +156,7 @@ void deviceDescriptionHandler(physicalgraph.device.HubResponse hubResponse) {
   def body = hubResponse.xml
   log.debug body
   def devices = getDevices()
-  log.debug "device: ${devices}"
-  log.debug "body: ${body?.device?.UDN?.text()}"
   def device = devices.find { it?.key?.contains(body?.device?.UDN?.text()) }
-  log.debug "device: ${device}"
   if (device) {
     device.value << [name: body?.device?.friendlyName?.text(), model:body?.device?.modelName?.text(), serialNumber:body?.device?.serialNum?.text(), verified: true]
   }
@@ -172,7 +199,6 @@ Map verifiedDevices() {
 }
 
 def getVerifiedDevices() {
-  log.debug "get verified devices"
   getDevices().findAll{ it.value.verified == true }
 }
 

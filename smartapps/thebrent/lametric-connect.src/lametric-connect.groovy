@@ -264,7 +264,7 @@ private poll(dni) {
   def device = resolveDNI2Device(dni);
   def localIp = device?.ipv4_internal;
   def apiKey = device?.api_key;
-  getAllInfoFromDevice(localIp, apiKey);
+  getDevice(localIp, apiKey);
 }
 
 // LOCAL API
@@ -273,6 +273,20 @@ def getLocalApiDeviceInfoPath() { "/api/v2/info" }
 def getLocalApiSendNotificationPath() { "/api/v2/device/notifications" }
 def getLocalApiIndexPath() { "/api/v2/device" }
 def getLocalApiUser() { "dev" }
+
+def getDevice(localIp, apiKey) {
+  if (localIp && apiKey) {
+    def hubCommand = new physicalgraph.device.HubAction([
+      method: "GET",
+      path: localApiIndexPath+"?fields=id,name,serial_number,os_version,mode,model,audio,display,bluetooth,wifi",
+      headers: [
+        HOST: "${localIp}:8080",
+        Authorization: "Basic ${"${localApiUser}:${apiKey}".bytes.encodeBase64()}"
+      ]
+    ])
+    sendHubCommand(hubCommand)
+  }
+}
 
 def requestDeviceInfo(localIp, apiKey) {
   if (localIp && apiKey) {
@@ -328,19 +342,7 @@ def sendApiCallToDevice(dni, method, path, data) {
   }
 }
 
-def getAllInfoFromDevice(localIp, apiKey) {
-  if (localIp && apiKey) {
-    def hubCommand = new physicalgraph.device.HubAction([
-      method: "GET",
-      path: localApiIndexPath+"?fields=id,name,serial_number,os_version,mode,model,audio,display,bluetooth,wifi",
-      headers: [
-        HOST: "${localIp}:8080",
-        Authorization: "Basic ${"${localApiUser}:${apiKey}".bytes.encodeBase64()}"
-      ]
-    ])
-    sendHubCommand(hubCommand)
-  }
-}
+
 
 // CLOUD METHODS
 void listOfUserRemoteDevices() {
